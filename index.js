@@ -11,6 +11,7 @@ const albumRoutes = require('./routes/albums');
 const photoRoutes = require('./routes/photos');
 const timelineRoutes = require('./routes/timeline');
 const tagRoutes = require('./routes/tags');
+const webhookRoutes = require('./routes/webhook');
 
 // 创建Express应用
 const app = express();
@@ -40,6 +41,7 @@ app.use('/albums', albumRoutes);
 app.use('/photos', photoRoutes);
 app.use('/timeline', timelineRoutes);
 app.use('/tags', tagRoutes);
+app.use('/webhook', webhookRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
