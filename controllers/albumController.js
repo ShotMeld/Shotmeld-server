@@ -52,6 +52,15 @@ exports.createAlbum = async (req, res, next) => {
   try {
     const { name, description, coverPhotoId } = req.body;
     
+    // 检查是否已存在同名相册
+    const existingAlbum = await Album.findOne({ name, user: req.user.id });
+    if (existingAlbum) {
+      return res.status(400).json({
+        code: 400,
+        message: '已存在同名相册，请使用其他名称'
+      });
+    }
+    
     // 创建新相册
     const album = new Album({
       name,
