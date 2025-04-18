@@ -68,14 +68,22 @@ exports.register = async (req, res, next) => {
 // 用户登录
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { emailOrUsername, password } = req.body;
 
     // 查找用户
-    const user = await User.findOne({ email });
+    let user;
+    if (emailOrUsername.includes('@')) {
+      // 通过邮箱查找
+      user = await User.findOne({ email: emailOrUsername });
+    } else {
+      // 通过用户名查找
+      user = await User.findOne({ username: emailOrUsername });
+    }
+
     if (!user) {
       return res.status(401).json({
         code: 401,
-        message: '邮箱或密码不正确'
+        message: '用户名或密码不正确' // 修改：更新错误消息
       });
     }
 
@@ -84,7 +92,7 @@ exports.login = async (req, res, next) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         code: 401,
-        message: '邮箱或密码不正确'
+        message: '用户名或密码不正确' // 修改：更新错误消息
       });
     }
 
