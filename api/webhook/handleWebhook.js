@@ -1,13 +1,13 @@
 const { exec } = require('child_process');
 const crypto = require('crypto');
-const config = require('../config/config');
+const config = require('../../config/config');
 
 /**
  * 处理来自Git仓库的webhook请求
  * @param {object} req - Express请求对象
  * @param {object} res - Express响应对象
  */
-exports.handleWebhook = (req, res) => {
+function handleWebhook(req, res) {
   try {
     // 验证请求
     const signature = req.headers['x-hub-signature-256'];
@@ -66,4 +66,6 @@ exports.handleWebhook = (req, res) => {
     console.error('Webhook处理错误:', error);
     res.status(500).json({ message: '服务器内部错误' });
   }
-};
+}
+
+module.exports = handleWebhook;

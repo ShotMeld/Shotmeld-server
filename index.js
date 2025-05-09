@@ -5,13 +5,8 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const config = require('./config/config');
 
-// 引入路由
-const authRoutes = require('./routes/auth');
-const albumRoutes = require('./routes/albums');
-const photoRoutes = require('./routes/photos');
-const timelineRoutes = require('./routes/timeline');
-const tagRoutes = require('./routes/tags');
-const webhookRoutes = require('./routes/webhook');
+// 引入API路由
+const apiRoutes = require('./api');
 
 // 创建Express应用
 const app = express();
@@ -36,12 +31,7 @@ mongoose.connect(config.MONGODB_URI)
   });
 
 // 路由注册
-app.use('/auth', authRoutes);
-app.use('/albums', albumRoutes);
-app.use('/photos', photoRoutes);
-app.use('/timeline', timelineRoutes);
-app.use('/tags', tagRoutes);
-app.use('/webhook', webhookRoutes);
+app.use('/', apiRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
