@@ -33,10 +33,10 @@ router.delete('/:albumId', deleteAlbum);
 // 获取相册中的照片 - GET /albums/:albumId/photos
 router.get('/:albumId/photos', getAlbumPhotos);
 
-// 添加照片到相册 - POST /albums/:albumId/photos/:photoId
-router.post('/:albumId/photos/:photoId', addPhotoToAlbum);
+// 批量添加照片到相册 - POST /albums/:albumId/photos
+router.post('/:albumId/photos', addPhotoToAlbum);
 
-// 从相册中移除照片 - DELETE /albums/:albumId/photos/:photoId
-router.delete('/:albumId/photos/:photoId', removePhotoFromAlbum);
+// 从相册中批量移除照片 - DELETE /albums/:albumId/photos
+router.delete('/:albumId/photos', removePhotoFromAlbum);
 
 module.exports = router;

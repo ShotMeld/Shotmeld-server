@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 
 const albumSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: () => uuidv4() // 使用UUID作为主键
+  },
   name: {
     type: String,
     required: true,
@@ -9,20 +14,20 @@ const albumSchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true,
-    default: ''
+    default: null
   },
   coverPhotoId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'Photo',
     default: null
   },
   user: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true
   },
   photos: [{
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'Photo'
   }],
   createdAt: {
@@ -32,6 +37,17 @@ const albumSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  }
+},
+{
+  toJSON: {
+    virtuals: true, // 确保虚拟字段在JSON中可见
+    transform: (doc, ret) => {
+      ret.id = ret._id; // 确保返回id字段
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
   }
 });
 

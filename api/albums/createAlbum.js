@@ -8,11 +8,17 @@ async function createAlbum(req, res, next) {
   try {
     const { name, description, coverPhotoId } = req.body;
     
+    // 验证必须提供名称
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({
+        message: '必须提供有效的相册名称'
+      });
+    }
+    
     // 检查是否已存在同名相册
     const existingAlbum = await Album.findOne({ name, user: req.user.id });
     if (existingAlbum) {
-      return res.status(400).json({
-        code: 400,
+      return res.status(409).json({
         message: '已存在同名相册，请使用其他名称'
       });
     }
@@ -46,7 +52,6 @@ async function createAlbum(req, res, next) {
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
-        code: 400,
         message: '相册数据无效',
         details: error.message
       });

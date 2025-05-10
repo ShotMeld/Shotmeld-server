@@ -9,7 +9,7 @@ const uploadPhoto = require('./uploadPhoto');
 const batchUpload = require('./batchUpload');
 const getPhotoById = require('./getPhotoById');
 const updatePhoto = require('./updatePhoto');
-const deletePhoto = require('./deletePhoto');
+const deletePhotos = require('./deletePhotos');
 
 // 对所有路由应用认证中间件
 router.use(authenticate);
@@ -29,7 +29,7 @@ router.get('/:photoId', getPhotoById);
 // 更新照片信息 - PUT /photos/:photoId
 router.put('/:photoId', updatePhoto);
 
-// 删除照片 - DELETE /photos/:photoId
-router.delete('/:photoId', deletePhoto);
+// 批量删除照片 - DELETE /photos
+router.delete('/', deletePhotos);
 
 module.exports = router;

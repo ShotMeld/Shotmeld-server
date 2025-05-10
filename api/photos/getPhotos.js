@@ -1,5 +1,4 @@
 const Photo = require('../../models/Photo');
-const mongoose = require('mongoose');
 
 /**
  * 获取照片列表
@@ -18,11 +17,11 @@ async function getPhotos(req, res, next) {
       q // 搜索关键词
     } = req.query;
     
-    const pageNum = parseInt(page) || 1; // 确保page不为null
-    const limitNum = parseInt(limit) || 50; // 确保limit不为null
+    const pageNum = parseInt(page) || 1;
+    const limitNum = Math.min(Math.max(parseInt(limit) || 50, 1), 200); // 限制在1-200之间
     
     // 验证排序参数
-    const allowedSortFields = ['title', 'takenAt', 'createdAt'];
+    const allowedSortFields = ['title', 'takenAt', 'createdAt', 'fileSize'];
     const sortField = allowedSortFields.includes(sort) ? sort : 'takenAt';
     const sortOrder = order === 'asc' ? 1 : -1;
     
@@ -31,12 +30,12 @@ async function getPhotos(req, res, next) {
     
     // 按相册过滤
     if (albumId) {
-      query.albums = mongoose.Types.ObjectId.isValid(albumId) ? albumId : null;
+      query.albums = albumId;
     }
     
     // 按标签过滤
     if (tags) {
-      const tagList = Array.isArray(tags) ? tags : [tags];
+      const tagList = Array.isArray(tags) ? tags : tags.split(',');
       query.tags = { $in: tagList };
     }
     
@@ -47,7 +46,10 @@ async function getPhotos(req, res, next) {
         query.takenAt.$gte = new Date(startDate);
       }
       if (endDate) {
-        query.takenAt.$lte = new Date(endDate);
+        // 设置为当天的最后一秒
+        const endDateObj = new Date(endDate);
+        endDateObj.setHours(23, 59, 59, 999);
+        query.takenAt.$lte = endDateObj;
       }
     }
     

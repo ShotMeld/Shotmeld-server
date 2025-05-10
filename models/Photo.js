@@ -1,30 +1,39 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 
 // 地理位置模式
 const geoLocationSchema = new mongoose.Schema({
   latitude: {
     type: Number,
-    required: true  // 纬度
+    required: true,  // 纬度
+    min: -90,
+    max: 90
   },
   longitude: {
     type: Number,
-    required: true  // 经度
+    required: true,  // 经度
+    min: -180,
+    max: 180
   },
   name: {
     type: String,
-    default: ''  // 位置名称
+    default: null  // 位置名称
   }
 }, { _id: false });
 
 // 照片模式
 const photoSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: () => uuidv4() // 使用UUID作为主键
+  },
   title: {
     type: String,
-    default: ''  // 标题
+    default: null  // 标题
   },
   description: {
     type: String,
-    default: ''  // 描述
+    default: null  // 描述
   },
   filename: {
     type: String,
@@ -40,11 +49,11 @@ const photoSchema = new mongoose.Schema({
   },
   width: {
     type: Number,
-    required: true  // 宽度
+    default: null  // 宽度
   },
   height: {
     type: Number,
-    required: true  // 高度
+    default: null  // 高度
   },
   url: {
     type: String,
@@ -52,11 +61,11 @@ const photoSchema = new mongoose.Schema({
   },
   thumbnailUrl: {
     type: String,
-    required: true  // 缩略图URL
+    default: null  // 缩略图URL
   },
   takenAt: {
     type: Date,
-    default: Date.now  // 拍摄时间
+    default: null  // 拍摄时间
   },
   location: {
     type: geoLocationSchema,
@@ -67,12 +76,12 @@ const photoSchema = new mongoose.Schema({
     default: {}  // 元数据
   },
   user: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true  // 所属用户
   },
   albums: [{
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'Album'  // 所属相册
   }],
   tags: [{
@@ -86,6 +95,15 @@ const photoSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now  // 更新时间
+  }
+}, {
+  toJSON: {
+    transform: (doc, ret) => {
+      ret.id = ret._id; // 确保返回id字段
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
   }
 });
 

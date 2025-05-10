@@ -19,7 +19,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, config.JWT_SECRET);
     
     // 在请求中添加用户信息
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId);
     
     if (!user) {
       return res.status(401).json({

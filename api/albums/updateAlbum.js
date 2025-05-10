@@ -1,6 +1,5 @@
 const Album = require('../../models/Album');
 const Photo = require('../../models/Photo');
-const mongoose = require('mongoose');
 
 /**
  * 更新相册信息
@@ -10,11 +9,10 @@ async function updateAlbum(req, res, next) {
     const { albumId } = req.params;
     const { name, description, coverPhotoId } = req.body;
     
-    // 验证ID格式
-    if (!mongoose.Types.ObjectId.isValid(albumId)) {
-      return res.status(404).json({
-        code: 404,
-        message: '相册不存在'
+    // 验证请求体不能为空
+    if (!name && description === undefined && coverPhotoId === undefined) {
+      return res.status(400).json({
+        message: '请提供至少一个要更新的字段'
       });
     }
     
@@ -26,9 +24,23 @@ async function updateAlbum(req, res, next) {
     
     if (!album) {
       return res.status(404).json({
-        code: 404,
         message: '相册不存在'
       });
+    }
+    
+    // 如果要更新名称，检查是否已存在同名相册
+    if (name && name !== album.name) {
+      const existingAlbum = await Album.findOne({ 
+        name, 
+        user: req.user.id,
+        _id: { $ne: albumId }
+      });
+      
+      if (existingAlbum) {
+        return res.status(409).json({
+          message: '已存在同名相册，请使用其他名称'
+        });
+      }
     }
     
     // 更新相册属性
@@ -61,7 +73,6 @@ async function updateAlbum(req, res, next) {
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
-        code: 400,
         message: '相册数据无效',
         details: error.message
       });

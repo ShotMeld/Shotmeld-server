@@ -1,4 +1,5 @@
 const processUploadedPhoto = require('./utils');
+const Tag = require('../../models/Tag');
 
 /**
  * 批量上传照片
@@ -14,11 +15,23 @@ async function batchUpload(req, res, next) {
       });
     }
     
-    // 处理公共元数据（如相册ID和标签）
-    const albumId = req.body.albumId;
-    const tags = req.body.tags ? 
-      (Array.isArray(req.body.tags) ? req.body.tags : [req.body.tags]) : 
-      [];
+    // 处理公共元数据
+    const albumIds = req.body.albumIds ? req.body.albumIds.split(',') : [];
+    
+    // 处理标签
+    let tags = [];
+    if (req.body.tags) {
+      tags = req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      // 确保所有标签都存在于数据库中
+      for (const tagName of tags) {
+        await Tag.findOneAndUpdate(
+          { name: tagName, user: req.user.id },
+          { name: tagName, user: req.user.id },
+          { upsert: true, new: true }
+        );
+      }
+    }
     
     const uploadedPhotos = [];
     
@@ -26,8 +39,11 @@ async function batchUpload(req, res, next) {
     for (const file of files) {
       // 为每张照片准备元数据
       const metadata = {
-        albumIds: albumId ? [albumId] : [],
-        tags: tags
+        albumIds: albumIds,
+        tags: tags,
+        // 可以添加默认的标题和描述
+        title: file.originalname.split('.')[0],
+        description: null
       };
       
       // 处理并保存照片
@@ -37,7 +53,8 @@ async function batchUpload(req, res, next) {
     
     // 返回上传结果
     res.status(201).json({
-      uploadedCount: uploadedPhotos.length,
+      message: `成功上传 ${uploadedPhotos.length} 张照片`,
+      count: uploadedPhotos.length,
       photos: uploadedPhotos
     });
   } catch (error) {

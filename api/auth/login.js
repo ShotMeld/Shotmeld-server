@@ -37,16 +37,10 @@ async function login(req, res, next) {
     // 生成JWT令牌
     const token = generateToken(user._id);
 
-    // 准备返回用户数据（不包括密码）
-    const userData = {
-      id: user._id,
-      username: user.username,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    };
+    // 使用toJSON转换为标准格式
+    const userData = user.toJSON();
 
-    // 返回成功响应
+    // 返回成功响应，符合AuthResponse模式
     res.status(200).json({
       token,
       user: userData

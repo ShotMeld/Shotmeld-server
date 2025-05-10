@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Photo = require('../../models/Photo');
 
 /**
@@ -7,14 +6,6 @@ const Photo = require('../../models/Photo');
 async function getPhotoById(req, res, next) {
   try {
     const { photoId } = req.params;
-    
-    // 验证ID格式
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      return res.status(404).json({
-        code: 404,
-        message: '照片不存在'
-      });
-    }
     
     // 查找照片
     const photo = await Photo.findOne({ 

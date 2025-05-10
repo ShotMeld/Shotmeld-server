@@ -7,10 +7,10 @@ async function getAlbums(req, res, next) {
   try {
     const { page = 1, limit = 20, sort = 'createdAt', order = 'desc' } = req.query;
     const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const limitNum = Math.min(Math.max(parseInt(limit), 1), 100); // 限制在1-100之间
     
     // 验证排序参数
-    const allowedSortFields = ['name', 'createdAt', 'updatedAt'];
+    const allowedSortFields = ['name', 'createdAt', 'updatedAt', 'photoCount'];
     const sortField = allowedSortFields.includes(sort) ? sort : 'createdAt';
     const sortOrder = order === 'asc' ? 1 : -1;
     

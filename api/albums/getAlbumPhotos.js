@@ -1,6 +1,5 @@
 const Album = require('../../models/Album');
 const Photo = require('../../models/Photo');
-const mongoose = require('mongoose');
 
 /**
  * 获取相册中的照片
@@ -16,18 +15,10 @@ async function getAlbumPhotos(req, res, next) {
     } = req.query;
     
     const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    
-    // 验证ID格式
-    if (!mongoose.Types.ObjectId.isValid(albumId)) {
-      return res.status(404).json({
-        code: 404,
-        message: '相册不存在'
-      });
-    }
+    const limitNum = Math.min(Math.max(parseInt(limit), 1), 200); // 限制在1-200之间
     
     // 验证排序参数
-    const allowedSortFields = ['title', 'takenAt', 'createdAt'];
+    const allowedSortFields = ['title', 'takenAt', 'createdAt', 'fileSize'];
     const sortField = allowedSortFields.includes(sort) ? sort : 'takenAt';
     const sortOrder = order === 'asc' ? 1 : -1;
     
@@ -39,7 +30,6 @@ async function getAlbumPhotos(req, res, next) {
     
     if (!album) {
       return res.status(404).json({
-        code: 404,
         message: '相册不存在'
       });
     }

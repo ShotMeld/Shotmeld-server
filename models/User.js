@@ -1,12 +1,19 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
 
 const userSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: () => uuidv4() // 使用UUID作为主键
+  },
   username: {
     type: String,
     required: true,
     unique: true,
-    trim: true
+    trim: true,
+    minlength: 3,
+    maxlength: 30
   },
   email: {
     type: String,
@@ -17,7 +24,8 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
+    required: true,
+    minlength: 8
   },
   createdAt: {
     type: Date,
@@ -26,6 +34,16 @@ const userSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  }
+}, {
+  toJSON: {
+    transform: (doc, ret) => {
+      ret.id = ret._id; // 确保返回id字段
+      delete ret._id; // 移除_id字段
+      delete ret.password; // 确保不返回密码
+      delete ret.__v;
+      return ret;
+    }
   }
 });
 

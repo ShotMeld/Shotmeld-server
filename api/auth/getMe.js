@@ -7,13 +7,7 @@ async function getMe(req, res, next) {
     const user = req.user;
 
     // 返回用户信息
-    res.status(200).json({
-      id: user._id,
-      username: user.username,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    });
+    res.status(200).json(user.toJSON());
     
   } catch (error) {
     next(error);
