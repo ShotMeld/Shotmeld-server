@@ -45,4 +45,5 @@ app.use((err, req, res, next) => {
 // 启动服务器
 app.listen(config.PORT, () => {
   console.log(`服务器运行在 http://localhost:${config.PORT}`);
+  process.send('ready');
 });

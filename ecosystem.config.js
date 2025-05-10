@@ -1,18 +1,13 @@
 module.exports = {
   apps: [{
-    name: "myapi",
+    name: "shotmeld-server",
     script: "index.js",
     watch: true,
-    ignore_watch: ["node_modules", "uploads", ".git"],
-    watch_options: {
-      "followSymlinks": false,
-      "usePolling": true,
-      "interval": 1000
-    },
+    max_memory_restart: "512M",
+    kill_timeout: 3000,
+    wait_ready: false,
+    listen_timeout: 50000,
     env: {
-      NODE_ENV: "development",
-    },
-    env_production: {
       NODE_ENV: "production",
     }
   }]
