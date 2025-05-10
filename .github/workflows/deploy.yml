@@ -25,10 +25,10 @@ jobs:
             echo "Navigating to project directory..."
             cd /root/projects/Shotmeld-server  # <--- 这里已更新为你的项目路径
             
-            echo "Pulling latest changes from main branch..."
-            git checkout main # 确保在 main 分支
-            git fetch origin main # 获取最新的 main 分支信息
-            git reset --hard origin/main # 强制将本地分支重置为远程 main 分支的状态
-            # git pull origin main # 通常在 reset --hard 后，此命令可以省略或作为双重检查
+            echo "Pulling latest changes from master branch..."
+            git checkout master # 确保在 master 分支
+            git fetch origin master # 获取最新的 master 分支信息
+            git reset --hard origin/master # 强制将本地分支重置为远程 master 分支的状态
+            # git pull origin master # 通常在 reset --hard 后，此命令可以省略或作为双重检查
             
             echo "Deployment to server completed successfully at $(date)"
