@@ -32,6 +32,19 @@ jobs:
             # git pull origin master # 通常在 reset --hard 后，此命令可以省略或作为双重检查
             
             echo "Reloading application with PM2..."
+            export NVM_DIR="$HOME/.nvm" # 指定 NVM 的安装目录
+            if [ -s "$NVM_DIR/nvm.sh" ]; then # 检查 NVM 脚本是否存在
+              \\. "$NVM_DIR/nvm.sh"  # 加载 NVM
+              # 如果你的 pm2 需要特定版本的 Node.js, 你可能需要在这里添加:
+              # nvm use default  # 或者 nvm use <your_node_version>
+            else
+              echo "Warning: NVM script not found at $NVM_DIR/nvm.sh. Trying to source .bashrc as a fallback." >&2
+              if [ -s "$HOME/.bashrc" ]; then # 如果 NVM 脚本未找到，尝试加载 .bashrc
+                \\. "$HOME/.bashrc"
+              else
+                echo "Warning: .bashrc not found. pm2 might still not be found." >&2
+              fi
+            fi
             pm2 reload ecosystem.config.js # 使用 PM2 重载应用
 
             echo "Deployment to server completed successfully at $(date)"
