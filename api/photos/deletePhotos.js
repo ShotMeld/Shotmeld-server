@@ -2,7 +2,8 @@ const Photo = require('../../models/Photo');
 const Album = require('../../models/Album');
 const path = require('path');
 const fs = require('fs-extra');
-const { photoDir, thumbnailDir } = require('../../config/upload');
+const { photoDir, thumbnailDir, ossPhotoPath, ossThumbnailPath } = require('../../config/upload');
+const { deleteFile } = require('../../utils/oss');
 
 /**
  * 批量删除照片
@@ -62,12 +63,28 @@ async function deletePhotos(req, res, next) {
       const thumbnailFilename = `thumb_${photo.filename}`;
       const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
       
-      // 删除照片文件
+      // 删除OSS中的照片和缩略图
+      try {
+        const ossPhotoKey = `${ossPhotoPath}${photo.filename}`;
+        const ossThumbnailKey = `${ossThumbnailPath}${thumbnailFilename}`;
+        
+        // 删除OSS中的文件
+        await deleteFile(ossPhotoKey);
+        await deleteFile(ossThumbnailKey);
+        
+        console.log(`已从OSS删除照片: ${ossPhotoKey}`);
+        console.log(`已从OSS删除缩略图: ${ossThumbnailKey}`);
+      } catch (ossError) {
+        console.error(`删除OSS文件时出错:`, ossError);
+        // 如果OSS删除失败，继续执行本地文件删除
+      }
+      
+      // 删除本地照片文件（如果存在）
       if (fs.existsSync(photoPath)) {
         await fs.unlink(photoPath);
       }
       
-      // 删除缩略图文件
+      // 删除本地缩略图文件（如果存在）
       if (fs.existsSync(thumbnailPath)) {
         await fs.unlink(thumbnailPath);
       }

@@ -5,17 +5,23 @@ const { v4: uuidv4 } = require('uuid');
 
 // 确保上传目录存在
 const uploadDir = path.join(__dirname, '..', 'uploads');
-const photoDir = path.join(uploadDir, 'photos');
+const tempDir = path.join(uploadDir, 'temp'); // 临时目录，上传到OSS后可删除
+const photoDir = path.join(uploadDir, 'photos'); // 保留本地目录作为备份
 const thumbnailDir = path.join(uploadDir, 'thumbnails');
 
+// OSS存储路径
+const ossPhotoPath = 'photos/';
+const ossThumbnailPath = 'thumbnails/';
+
 // 创建必要的目录
+fs.ensureDirSync(tempDir);
 fs.ensureDirSync(photoDir);
 fs.ensureDirSync(thumbnailDir);
 
 // 配置存储
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, photoDir);
+    cb(null, tempDir); // 先保存到临时目录
   },
   filename: function (req, file, cb) {
     // 生成唯一文件名，保留原始扩展名
@@ -36,9 +42,9 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// 文件大小限制(10MB)
+// 文件大小限制(20MB)
 const limits = {
-  fileSize: 10 * 1024 * 1024
+  fileSize: 20 * 1024 * 1024
 };
 
 // 创建multer实例
@@ -50,6 +56,9 @@ const upload = multer({
 
 module.exports = {
   upload,
+  tempDir,
   photoDir,
-  thumbnailDir
+  thumbnailDir,
+  ossPhotoPath,
+  ossThumbnailPath
 };

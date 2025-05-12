@@ -3,8 +3,9 @@ const Album = require('../../models/Album');
 const path = require('path');
 const fs = require('fs-extra');
 const sharp = require('sharp');
-const { photoDir, thumbnailDir } = require('../../config/upload');
+const { tempDir, photoDir, thumbnailDir, ossPhotoPath, ossThumbnailPath } = require('../../config/upload');
 const config = require('../../config/config');
+const { uploadFile, getFileUrl, deleteFile } = require('../../utils/oss');
 
 // 处理上传图片并创建缩略图
 async function processUploadedPhoto(file, userId, metadata = {}) {
@@ -14,17 +15,54 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
 
     // 创建缩略图
     const thumbnailFilename = `thumb_${path.basename(file.path)}`;
-    const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
+    const thumbnailPath = path.join(tempDir, thumbnailFilename);
 
     // 生成缩略图 (调整大小到300px宽度)
     await sharp(file.path)
       .resize({ width: 300 })
       .toFile(thumbnailPath);
-
-    // 图片的服务URL
-    const baseUrl = process.env.BASE_URL || `http://localhost:${config.PORT}`;
-    const photoUrl = `${baseUrl}/uploads/photos/${file.filename}`;
-    const thumbnailUrl = `${baseUrl}/uploads/thumbnails/${thumbnailFilename}`;
+    
+    // 上传原图和缩略图到OSS
+    const ossPhotoFilepath = `${ossPhotoPath}${file.filename}`;
+    const ossThumbnailFilepath = `${ossThumbnailPath}${thumbnailFilename}`;
+    
+    // 上传原图到OSS
+    await uploadFile(file.path, ossPhotoFilepath);
+    // 上传缩略图到OSS
+    await uploadFile(thumbnailPath, ossThumbnailFilepath);
+    
+    // 可选：备份到本地目录
+    const localPhotoPath = path.join(photoDir, file.filename);
+    const localThumbPath = path.join(thumbnailDir, thumbnailFilename);
+    await fs.copy(file.path, localPhotoPath);
+    await fs.copy(thumbnailPath, localThumbPath);
+    
+    // 生成OSS图片URL（或使用OSS域名）
+    let photoUrl, thumbnailUrl;
+    
+    if (process.env.OSS_CUSTOM_DOMAIN) {
+      // 如果配置了自定义域名，使用自定义域名
+      photoUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossPhotoFilepath}`;
+      thumbnailUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossThumbnailFilepath}`;
+    } else {
+      // 否则使用签名URL（有时效性）或默认的OSS域名URL
+      photoUrl = getFileUrl(ossPhotoFilepath, 3600 * 24 * 365); // 1年有效期
+      thumbnailUrl = getFileUrl(ossThumbnailFilepath, 3600 * 24 * 365);
+    }
+    
+    // 删除临时文件
+    await fs.remove(file.path);
+    await fs.remove(thumbnailPath);
+    
+    if (process.env.OSS_CUSTOM_DOMAIN) {
+      // 如果配置了自定义域名，使用自定义域名
+      photoUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossPhotoFilepath}`;
+      thumbnailUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossThumbnailFilepath}`;
+    } else {
+      // 否则使用签名URL（有时效性）或默认的OSS域名URL
+      photoUrl = getFileUrl(ossPhotoFilepath, 3600 * 24 * 365); // 1年有效期
+      thumbnailUrl = getFileUrl(ossThumbnailFilepath, 3600 * 24 * 365);
+    }
 
     // 提取拍摄时间或使用当前时间
     let takenAt = null;
@@ -103,13 +141,41 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
     return photo;
   } catch (error) {
     // 如果处理过程中出错，删除已上传的文件
-    if (file.path && fs.existsSync(file.path)) {
-      await fs.unlink(file.path);
-    }
+    try {
+      // 尝试从OSS删除
+      const ossPhotoKey = `${ossPhotoPath}${file.filename}`;
+      const ossThumbnailKey = `${ossThumbnailPath}thumb_${file.filename}`;
+      
+      try {
+        await deleteFile(ossPhotoKey);
+        await deleteFile(ossThumbnailKey);
+      } catch (ossError) {
+        console.error('清理OSS文件失败:', ossError);
+      }
+      
+      // 删除本地临时文件
+      if (file.path && fs.existsSync(file.path)) {
+        await fs.unlink(file.path);
+      }
 
-    const thumbnailPath = path.join(thumbnailDir, `thumb_${file.filename}`);
-    if (fs.existsSync(thumbnailPath)) {
-      await fs.unlink(thumbnailPath);
+      const thumbnailPath = path.join(tempDir, `thumb_${file.filename}`);
+      if (fs.existsSync(thumbnailPath)) {
+        await fs.unlink(thumbnailPath);
+      }
+      
+      // 删除本地备份文件
+      const localPhotoPath = path.join(photoDir, file.filename);
+      const localThumbPath = path.join(thumbnailDir, `thumb_${file.filename}`);
+      
+      if (fs.existsSync(localPhotoPath)) {
+        await fs.unlink(localPhotoPath);
+      }
+      
+      if (fs.existsSync(localThumbPath)) {
+        await fs.unlink(localThumbPath);
+      }
+    } catch (cleanupError) {
+      console.error('清理文件失败:', cleanupError);
     }
 
     throw error;
