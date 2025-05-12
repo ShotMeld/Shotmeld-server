@@ -6,19 +6,46 @@ const sharp = require('sharp');
 const { tempDir, photoDir, thumbnailDir, ossPhotoPath, ossThumbnailPath } = require('../../config/upload');
 const config = require('../../config/config');
 const { uploadFile, getFileUrl, deleteFile } = require('../../utils/oss');
+const { parseExifFromFile } = require('../../utils/exif');
 
 // 处理上传图片并创建缩略图
 async function processUploadedPhoto(file, userId, metadata = {}) {
   try {
-    // 读取图片元数据
-    const imageInfo = await sharp(file.path).metadata();
+    // 读取文件内容到内存，以便后续处理
+    const fileBuffer = await fs.readFile(file.path);
+    
+    // 使用sharp读取图片元数据
+    const imageInfo = await sharp(fileBuffer).metadata();
+    
+    // 解析图片的EXIF信息 - 在上传到OSS前就进行解析
+    let exifData = null;
+    let takenAt = null;
+    try {
+      exifData = await parseExifFromFile(fileBuffer);
+      
+      // 如果有拍摄时间，从EXIF中提取
+      if (exifData && exifData.dateTimeOriginal) {
+        takenAt = exifData.dateTimeOriginal;
+      }
+    } catch (error) {
+      console.error("解析EXIF数据失败:", error);
+    }
+    
+    // 如果从EXIF提取失败，尝试使用传入的时间
+    if (!takenAt && metadata.takenAt) {
+      try {
+        takenAt = new Date(metadata.takenAt);
+      } catch (error) {
+        console.error("无效的拍摄日期格式:", error);
+      }
+    }
 
     // 创建缩略图
     const thumbnailFilename = `thumb_${path.basename(file.path)}`;
     const thumbnailPath = path.join(tempDir, thumbnailFilename);
 
     // 生成缩略图 (调整大小到300px宽度)
-    await sharp(file.path)
+    await sharp(fileBuffer)
       .resize({ width: 300 })
       .toFile(thumbnailPath);
     
@@ -53,35 +80,15 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
     // 删除临时文件
     await fs.remove(file.path);
     await fs.remove(thumbnailPath);
-    
-    if (process.env.OSS_CUSTOM_DOMAIN) {
-      // 如果配置了自定义域名，使用自定义域名
-      photoUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossPhotoFilepath}`;
-      thumbnailUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossThumbnailFilepath}`;
-    } else {
-      // 否则使用签名URL（有时效性）或默认的OSS域名URL
-      photoUrl = getFileUrl(ossPhotoFilepath, 3600 * 24 * 365); // 1年有效期
-      thumbnailUrl = getFileUrl(ossThumbnailFilepath, 3600 * 24 * 365);
-    }
 
-    // 提取拍摄时间或使用当前时间
-    let takenAt = null;
-    if (metadata.takenAt) {
-      try {
-        takenAt = new Date(metadata.takenAt);
-      } catch (error) {
-        console.error("无效的拍摄日期格式:", error);
-      }
-    }
-
-    // 如果未指定拍摄时间，尝试从EXIF中提取
-    if (!takenAt && imageInfo.exif) {
-      try {
-        // 尝试解析EXIF数据中的日期
-        // 此处需根据实际EXIF处理库来实现
-      } catch (error) {
-        console.error("无法从EXIF提取日期:", error);
-      }
+    // 处理位置信息 - 优先使用EXIF中的GPS数据，如果存在
+    let location = metadata.location;
+    if (!location && exifData && exifData.gpsLatitude && exifData.gpsLongitude) {
+      location = {
+        latitude: exifData.gpsLatitude,
+        longitude: exifData.gpsLongitude,
+        name: null // EXIF中通常没有位置名称
+      };
     }
 
     // 创建照片记录
@@ -96,10 +103,11 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
       url: photoUrl,
       thumbnailUrl: thumbnailUrl,
       takenAt: takenAt,
-      location: metadata.location,
+      location: location,
       metadata: {
         ...imageInfo,
-        originalName: file.originalname
+        originalName: file.originalname,
+        exif: exifData // 保存解析的EXIF数据
       },
       user: userId,
       albums: [],

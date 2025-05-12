@@ -10,6 +10,7 @@ const batchUpload = require('./batchUpload');
 const getPhotoById = require('./getPhotoById');
 const updatePhoto = require('./updatePhoto');
 const deletePhotos = require('./deletePhotos');
+const reprocessExif = require('./reprocessExif');
 
 // 对所有路由应用认证中间件
 router.use(authenticate);
@@ -28,6 +29,9 @@ router.get('/:photoId', getPhotoById);
 
 // 更新照片信息 - PUT /photos/:photoId
 router.put('/:photoId', updatePhoto);
+
+// 重新处理照片的EXIF信息 - POST /photos/:photoId/exif
+router.post('/:photoId/exif', reprocessExif);
 
 // 批量删除照片 - DELETE /photos
 router.delete('/', deletePhotos);

@@ -130,6 +130,24 @@ async function deleteFile(ossFilePath) {
     }
 }
 
+/**
+ * 从OSS获取文件内容到Buffer
+ * @param {string} ossFilePath OSS文件路径
+ * @returns {Promise<Buffer>} 文件内容Buffer
+ */
+async function getFileBuffer(ossFilePath) {
+    try {
+        const result = await client.get(ossFilePath);
+        if (result && result.content) {
+            return result.content;
+        }
+        throw new Error('获取文件内容失败，返回的内容为空');
+    } catch (err) {
+        console.error('从OSS获取文件内容失败:', err);
+        throw err;
+    }
+}
+
 module.exports = {
     client,
     listBuckets,
@@ -137,5 +155,6 @@ module.exports = {
     downloadFile,
     getFileUrl,
     deleteFile,
-    ensureBucketExists
+    ensureBucketExists,
+    getFileBuffer
 };
