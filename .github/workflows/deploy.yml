@@ -43,6 +43,7 @@ jobs:
                 source "$HOME/.bashrc"
               else
                 echo "Warning: .bashrc not found. pm2 might still not be found." >&2
+              fi
             fi
             pm2 reload ecosystem.config.js # 使用 PM2 重载应用
 
