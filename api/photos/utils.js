@@ -96,7 +96,6 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
     let autoTags = [];
     if (config.aliCloud?.autoTagPhotos) {
       try {
-        console.log('开始识别照片标签...');
         // 使用本地保存的照片文件路径进行标签识别
         const localPhotoPath = path.join(photoDir, file.filename);
         const recognizedTags = await recognizeImageTags(localPhotoPath);
