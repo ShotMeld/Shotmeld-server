@@ -7,6 +7,7 @@ const { tempDir, photoDir, thumbnailDir, ossPhotoPath, ossThumbnailPath } = requ
 const config = require('../../config/config');
 const { uploadFile, getFileUrl, deleteFile } = require('../../utils/oss');
 const { parseExifFromFile } = require('../../utils/exif');
+const { recognizeImageTags } = require('../../utils/imageRecognition');
 
 // 处理上传图片并创建缩略图
 async function processUploadedPhoto(file, userId, metadata = {}) {
@@ -90,6 +91,38 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
         name: null // EXIF中通常没有位置名称
       };
     }
+    
+    // 使用阿里云图像识别API识别照片标签
+    let autoTags = [];
+    if (config.aliCloud?.autoTagPhotos) {
+      try {
+        console.log('开始识别照片标签...');
+        // 使用本地保存的照片文件路径进行标签识别
+        const localPhotoPath = path.join(photoDir, file.filename);
+        const recognizedTags = await recognizeImageTags(localPhotoPath);
+        
+        if (recognizedTags && recognizedTags.length > 0) {
+          // 只提取准确度高于30%的标签
+          autoTags = recognizedTags
+            .filter(tag => tag.confidence >= 30)
+            .map(tag => tag.value);
+        }
+      } catch (tagError) {
+        console.error('图像标签识别失败:', tagError);
+      }
+    }
+    
+    // 合并用户手动添加的标签和自动识别的标签
+    const combinedTags = [...(metadata.tags || [])];
+    
+    // 添加自动识别的标签（避免重复）
+    if (autoTags.length > 0) {
+      autoTags.forEach(tag => {
+        if (!combinedTags.includes(tag)) {
+          combinedTags.push(tag);
+        }
+      });
+    }
 
     // 创建照片记录
     const photo = new Photo({
@@ -107,11 +140,12 @@ async function processUploadedPhoto(file, userId, metadata = {}) {
       metadata: {
         ...imageInfo,
         originalName: file.originalname,
-        exif: exifData // 保存解析的EXIF数据
+        exif: exifData, // 保存解析的EXIF数据
+        autoTagged: autoTags.length > 0 // 标记是否使用了自动标签功能
       },
       user: userId,
       albums: [],
-      tags: metadata.tags || []
+      tags: combinedTags // 使用合并后的标签（手动+自动识别）
     });
 
     // 保存照片

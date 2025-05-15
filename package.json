@@ -10,6 +10,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@alicloud/imagerecog20190930": "^2.0.10",
+    "@alicloud/openapi-client": "^0.4.14",
+    "@alicloud/tea-util": "^1.4.10",
     "ali-oss": "^6.22.0",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
