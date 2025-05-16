@@ -1,4 +1,4 @@
-const processUploadedPhoto = require('./utils');
+const { processUploadedPhotoInitial, processUploadedPhotoFinal } = require('./utils');
 const Album = require('../../models/Album');
 
 /**
@@ -85,11 +85,23 @@ async function uploadPhoto(req, res, next) {
       albumIds: parsedAlbumIds
     };
 
-    // 处理上传的照片
-    const photo = await processUploadedPhoto(file, req.user.id, metadata);
-
-    // 返回创建的照片
-    res.status(201).json(photo);
+    try {
+      // 第一阶段：快速处理并返回初始照片信息（使用本地URL）
+      const initialPhotoData = await processUploadedPhotoInitial(file, req.user.id, metadata);
+      
+      // 立即返回成功响应，包括刚创建的照片信息
+      res.status(201).json(initialPhotoData.photo);
+      
+      // 第二阶段：异步处理照片上传到OSS、EXIF解析和标签识别
+      // 这部分不会阻塞响应，用户不需要等待
+      processUploadedPhotoFinal(initialPhotoData, req.user.id, metadata)
+        .catch(err => {
+          console.error('照片后期处理失败:', err);
+          // 这里可以添加额外的错误处理，如通知系统或重试机制
+        });
+    } catch (error) {
+      next(error);
+    }
   } catch (error) {
     next(error);
   }

@@ -18,11 +18,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// 配置静态文件服务，仅作为备份或开发环境使用
-// 注：生产环境应通过OSS直接访问文件
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-}
+// 配置静态文件服务
+// 生产环境主要通过OSS访问，但本地备份也可用作过渡期访问
+// 这样在照片上传后，即使OSS处理尚未完成，前端也可以立即显示照片
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 连接MongoDB
 mongoose.connect(config.MONGODB_URI)
