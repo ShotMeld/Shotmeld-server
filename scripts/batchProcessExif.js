@@ -30,7 +30,7 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 }, {});
 
 // 连接到MongoDB
-mongoose.connect(config.mongodb.uri)
+mongoose.connect(config.MONGODB_URI)
   .then(() => {
     console.log('已连接到MongoDB');
     return processPhotos();

@@ -18,6 +18,39 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     // 使用sharp读取图片元数据
     const imageInfo = await sharp(fileBuffer).metadata();
     
+    // 解析EXIF信息
+    let exifData = null;
+    let takenAt = null;
+    try {
+      exifData = await parseExifFromFile(fileBuffer);
+      
+      // 如果有拍摄时间，从EXIF中提取
+      if (exifData && exifData.dateTimeOriginal) {
+        takenAt = exifData.dateTimeOriginal;
+      }
+    } catch (error) {
+      console.error("解析EXIF数据失败:", error);
+    }
+    
+    // 如果从EXIF提取失败，尝试使用传入的时间
+    if (!takenAt && metadata.takenAt) {
+      try {
+        takenAt = new Date(metadata.takenAt);
+      } catch (error) {
+        console.error("无效的拍摄日期格式:", error);
+      }
+    }
+
+    // 处理位置信息 - 优先使用EXIF中的GPS数据，如果存在
+    let location = metadata.location;
+    if (!location && exifData && exifData.gpsLatitude && exifData.gpsLongitude) {
+      location = {
+        latitude: exifData.gpsLatitude,
+        longitude: exifData.gpsLongitude,
+        name: null // EXIF中通常没有位置名称
+      };
+    }
+    
     // 创建缩略图
     const thumbnailFilename = `thumb_${path.basename(file.path)}`;
     const thumbnailPath = path.join(tempDir, thumbnailFilename);
@@ -40,7 +73,7 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     const photoUrl = `${serverBaseUrl}/uploads/photos/${file.filename}`;
     const thumbnailUrl = `${serverBaseUrl}/uploads/thumbnails/${thumbnailFilename}`;
     
-    // 创建照片记录（暂时不包含EXIF和标签信息）
+    // 创建照片记录（包含EXIF信息）
     const photo = new Photo({
       title: metadata.title || file.originalname.split('.')[0],
       description: metadata.description || null,
@@ -53,7 +86,12 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
       thumbnailUrl: thumbnailUrl,
       user: userId,
       albums: [],
-      tags: metadata.tags || []
+      tags: metadata.tags || [],
+      takenAt: takenAt,
+      location: location,
+      metadata: {
+        exif: exifData
+      }
     });
 
     // 保存照片基本信息
@@ -146,48 +184,18 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
     await fs.remove(tempFilePath);
     await fs.remove(thumbnailPath);
 
-    // 读取文件内容，解析EXIF信息
-    const fileBuffer = await fs.readFile(localPhotoPath);
-    
-    // 解析图片的EXIF信息
-    let exifData = null;
-    let takenAt = null;
-    try {
-      exifData = await parseExifFromFile(fileBuffer);
-      
-      // 如果有拍摄时间，从EXIF中提取
-      if (exifData && exifData.dateTimeOriginal) {
-        takenAt = exifData.dateTimeOriginal;
-      }
-    } catch (error) {
-      console.error("解析EXIF数据失败:", error);
-    }
-    
-    // 如果从EXIF提取失败，尝试使用传入的时间
-    if (!takenAt && metadata.takenAt) {
-      try {
-        takenAt = new Date(metadata.takenAt);
-      } catch (error) {
-        console.error("无效的拍摄日期格式:", error);
-      }
-    }
-
-    // 处理位置信息 - 优先使用EXIF中的GPS数据，如果存在
-    let location = metadata.location;
-    if (!location && exifData && exifData.gpsLatitude && exifData.gpsLongitude) {
-      location = {
-        latitude: exifData.gpsLatitude,
-        longitude: exifData.gpsLongitude,
-        name: null // EXIF中通常没有位置名称
-      };
-    }
-    
     // 使用阿里云图像识别API识别照片标签
     let autoTags = [];
     if (config.aliCloud?.autoTagPhotos) {
       try {
+        // 检查文件大小，如果超过3MB则使用缩略图进行识别（阿里平台的限制）
+        const fileStats = await fs.stat(localPhotoPath);
+        const fileSizeInMB = fileStats.size / (1024 * 1024);
+        
         // 使用本地保存的照片文件路径进行标签识别
-        const recognizedTags = await recognizeImageTags(localPhotoPath);
+        const recognizedTags = await recognizeImageTags(
+          fileSizeInMB > 3 ? localThumbPath : localPhotoPath
+        );
         
         if (recognizedTags && recognizedTags.length > 0) {
           // 只提取准确度高于30%的标签
@@ -215,12 +223,9 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
     // 更新照片记录
     photo.url = photoUrl;
     photo.thumbnailUrl = thumbnailUrl;
-    photo.takenAt = takenAt;
-    photo.location = location;
     photo.tags = combinedTags;
     photo.metadata = {
       ...photo.metadata,
-      exif: exifData, // 保存解析的EXIF数据
       autoTagged: autoTags.length > 0 // 标记是否使用了自动标签功能
     };
 

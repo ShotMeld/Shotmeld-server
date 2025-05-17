@@ -6,6 +6,32 @@ const ExifParser = require('exif-parser');
 const Photo = require('../models/Photo');
 
 /**
+ * 将时间戳转换为北京时间（UTC+8）
+ * @param {number} timestamp - Unix时间戳（秒）
+ * @returns {Date} - 北京时间
+ */
+function convertToBeijingTime(timestamp) {
+  const date = new Date(timestamp * 1000);
+  // 获取UTC时间
+  const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+  // 转换为北京时间（UTC+8）
+  return new Date(utc + (3600000 * 8));
+}
+
+/**
+ * 将EXIF时间戳（假定为北京时间）转为UTC时间（Date对象）
+ * @param {number} timestamp - Unix时间戳（秒）
+ * @returns {Date} - UTC时间
+ */
+function exifToUTCDate(timestamp) {
+  if (!timestamp) return null;
+  const localDate = new Date(timestamp * 1000);
+  // 减去8小时，得到真正的 UTC 时间
+  localDate.setHours(localDate.getHours() - 8);
+  return localDate;
+}
+
+/**
  * 从图片文件解析EXIF数据
  * @param {string|Buffer} input - 图片文件的路径或buffer数据
  * @returns {Object|null} - 解析后的EXIF数据对象或null（如果解析失败）
@@ -44,12 +70,12 @@ async function parseExifFromFile(input) {
       model: result.tags.Model,
       software: result.tags.Software,
       
-      // 时间信息
+      // 时间信息 - 存储为UTC
       dateTimeOriginal: result.tags.DateTimeOriginal 
-        ? new Date(result.tags.DateTimeOriginal * 1000)
+        ? exifToUTCDate(result.tags.DateTimeOriginal)
         : null,
       dateTimeDigitized: result.tags.DateTimeDigitized 
-        ? new Date(result.tags.DateTimeDigitized * 1000)
+        ? exifToUTCDate(result.tags.DateTimeDigitized)
         : null,
       
       // 相机设置
