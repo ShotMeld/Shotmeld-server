@@ -154,7 +154,7 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
 
 // 处理上传图片流程第二阶段：上传到OSS，处理EXIF和标签
 async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
-  const { photo, tempFilePath, thumbnailPath, localPhotoPath } = photoData;
+  const { photo, tempFilePath, thumbnailPath, localPhotoPath, localThumbPath } = photoData;
   
   try {
     // 上传原图和缩略图到OSS
