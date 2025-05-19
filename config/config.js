@@ -6,6 +6,7 @@ module.exports = {
     JWT_SECRET: process.env.JWT_SECRET || 'mysecretkey', // 后面做登录用
     PORT: process.env.PORT || 3000,
     GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET,
+    AMAP_KEY: process.env.AMAP_KEY, // 高德地图API KEY
     aliCloud: {
         accessKeyId: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID,
         accessKeySecret: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET,

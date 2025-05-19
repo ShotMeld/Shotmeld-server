@@ -4,6 +4,8 @@
 const fs = require('fs');
 const ExifParser = require('exif-parser');
 const Photo = require('../models/Photo');
+const axios = require('axios'); // 添加axios
+const config = require('../config/config'); // 引入配置文件
 
 /**
  * 将时间戳转换为北京时间（UTC+8）
@@ -201,8 +203,78 @@ async function batchProcessExif(photosInfo) {
   return results;
 }
 
+/**
+ * 将GPS（WGS84）坐标转换为高德（GCJ-02）坐标系并获取位置名称
+ * @param {number} longitude - GPS经度
+ * @param {number} latitude - GPS纬度
+ * @returns {Promise<{longitude: number, latitude: number, name: string|null}>} - 包含高德坐标和位置名称的对象
+ */
+async function convertGPSToAMap(originalLongitude, originalLatitude) {
+  try {
+    // 验证输入坐标的有效性
+    if (typeof originalLongitude !== 'number' || typeof originalLatitude !== 'number' ||
+        isNaN(originalLongitude) || isNaN(originalLatitude)) {
+      throw new Error('无效的坐标值');
+    }
+
+    // 确保有API Key
+    if (!config.AMAP_KEY) {
+      console.warn('未配置高德地图API Key，无法进行坐标转换和逆地理编码');
+      return { longitude: originalLongitude, latitude: originalLatitude, name: null };
+    }
+
+    let amapLongitude = originalLongitude;
+    let amapLatitude = originalLatitude;
+    let locationName = null;
+
+    // 1. 坐标转换 (WGS84 to GCJ-02)
+    const convertUrl = `https://restapi.amap.com/v3/assistant/coordinate/convert?key=${config.AMAP_KEY}&locations=${originalLongitude},${originalLatitude}&coordsys=gps`;
+    try {
+      const convertResponse = await axios.get(convertUrl);
+      if (convertResponse.data && convertResponse.data.status === '1' && convertResponse.data.locations) {
+        const [lon, lat] = convertResponse.data.locations.split(',');
+        amapLongitude = parseFloat(lon);
+        amapLatitude = parseFloat(lat);
+      } else {
+        console.error('高德地图坐标转换API返回错误:', convertResponse.data);
+        // 如果转换失败，将使用原始坐标进行逆地理编码
+      }
+    } catch (convertError) {
+      console.error('高德地图坐标转换失败:', convertError);
+      // 如果转换失败，将使用原始坐标进行逆地理编码
+    }
+    
+    // 2. 逆地理编码获取位置名称 (使用转换后的或原始的高德坐标)
+    const locationStringForRegeo = `${amapLongitude},${amapLatitude}`;
+    const regeoUrl = `https://restapi.amap.com/v3/geocode/regeo?key=${config.AMAP_KEY}&location=${locationStringForRegeo}&extensions=base`;
+    
+    try {
+        const regeoResponse = await axios.get(regeoUrl);
+        if (regeoResponse.data && regeoResponse.data.status === '1' && regeoResponse.data.regeocode) {
+          locationName = regeoResponse.data.regeocode.formatted_address;
+        } else {
+          console.error('高德地图逆地理编码API返回错误:', regeoResponse.data);
+        }
+    } catch (regeoError) {
+        console.error('高德地图逆地理编码失败:', regeoError);
+    }
+
+    // 返回转换后的高德经纬度和获取到的位置名称
+    return {
+      longitude: amapLongitude,
+      latitude: amapLatitude,
+      name: locationName
+    };
+
+  } catch (error) {
+    console.error('获取位置名称或坐标转换主流程失败:', error);
+    return { longitude: originalLongitude, latitude: originalLatitude, name: null }; 
+  }
+}
+
 module.exports = {
   parseExifFromFile,
   updatePhotoExif,
-  batchProcessExif
+  batchProcessExif,
+  convertGPSToAMap
 };

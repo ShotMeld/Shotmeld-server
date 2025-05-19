@@ -55,11 +55,34 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     // 处理位置信息 - 优先使用EXIF中的GPS数据，如果存在
     let location = metadata.location;
     if (!location && exifData && exifData.gpsLatitude && exifData.gpsLongitude) {
-      location = {
-        latitude: exifData.gpsLatitude,
-        longitude: exifData.gpsLongitude,
-        name: null // EXIF中通常没有位置名称
-      };
+      try {
+        // 将GPS坐标转换为高德坐标并获取位置名称
+        const { latitude, longitude, name } = await require('../../utils/exif').convertGPSToAMap(
+          exifData.gpsLongitude,
+          exifData.gpsLatitude
+        );
+        
+        location = {
+          latitude: latitude, // WGS84 latitude (as returned by convertGPSToAMap)
+          longitude: longitude, // WGS84 longitude (as returned by convertGPSToAMap)
+          name: name, // formatted_address from Gaode API
+          originalGPS: { // 保存原始GPS坐标
+            latitude: exifData.gpsLatitude,
+            longitude: exifData.gpsLongitude
+          }
+        };
+      } catch (error) {
+        console.error("获取位置名称或坐标转换失败，使用原始GPS坐标:", error);
+        location = {
+          latitude: exifData.gpsLatitude,
+          longitude: exifData.gpsLongitude,
+          name: null, // 获取位置名称失败
+          originalGPS: {
+            latitude: exifData.gpsLatitude,
+            longitude: exifData.gpsLongitude
+          }
+        };
+      }
     }
     
     // 创建缩略图
