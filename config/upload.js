@@ -33,12 +33,12 @@ const storage = multer.diskStorage({
 // 文件过滤器，只接受图片文件
 const fileFilter = (req, file, cb) => {
   // 接受的图片类型
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heif', 'image/heic'];
   
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('不支持的文件类型。只允许JPG, PNG, GIF和WEBP格式的图片'), false);
+    cb(new Error('不支持的文件类型。只允许JPG, PNG, GIF, WEBP和HEIF/HEIC格式的图片'), false);
   }
 };
 

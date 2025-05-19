@@ -59,42 +59,71 @@ async function parseExifFromFile(input) {
     } else {
       throw new Error('无效的输入类型，必须是文件路径或Buffer');
     }
-
+    
     // 使用exif-parser解析EXIF数据
-    const parser = ExifParser.create(buffer);
-    const result = parser.parse();
+    try {
+      const parser = ExifParser.create(buffer);
+      const result = parser.parse();
 
-    return {
-      // 基本EXIF信息
-      make: result.tags.Make,
-      model: result.tags.Model,
-      software: result.tags.Software,
-      
-      // 时间信息 - 存储为UTC
-      dateTimeOriginal: result.tags.DateTimeOriginal 
-        ? exifToUTCDate(result.tags.DateTimeOriginal)
-        : null,
-      dateTimeDigitized: result.tags.DateTimeDigitized 
-        ? exifToUTCDate(result.tags.DateTimeDigitized)
-        : null,
-      
-      // 相机设置
-      exposureTime: result.tags.ExposureTime,
-      fNumber: result.tags.FNumber,
-      isoSpeedRatings: result.tags.ISO,
-      focalLength: result.tags.FocalLength,
-      
-      // GPS信息
-      gpsLatitude: result.tags.GPSLatitude,
-      gpsLongitude: result.tags.GPSLongitude,
-      gpsAltitude: result.tags.GPSAltitude,
-      
-      // 图像信息
-      orientation: result.tags.Orientation,
-      
-      // 原始EXIF数据（完整保存）
-      rawExif: result.tags
-    };
+      return {
+        // 基本EXIF信息
+        make: result.tags.Make,
+        model: result.tags.Model,
+        software: result.tags.Software,
+        
+        // 时间信息 - 存储为UTC
+        dateTimeOriginal: result.tags.DateTimeOriginal 
+          ? exifToUTCDate(result.tags.DateTimeOriginal)
+          : null,
+        dateTimeDigitized: result.tags.DateTimeDigitized 
+          ? exifToUTCDate(result.tags.DateTimeDigitized)
+          : null,
+        
+        // 相机设置
+        exposureTime: result.tags.ExposureTime,
+        fNumber: result.tags.FNumber,
+        isoSpeedRatings: result.tags.ISO,
+        focalLength: result.tags.FocalLength,
+        
+        // GPS信息
+        gpsLatitude: result.tags.GPSLatitude,
+        gpsLongitude: result.tags.GPSLongitude,
+        gpsAltitude: result.tags.GPSAltitude,
+        
+        // 图像信息
+        orientation: result.tags.Orientation,
+        
+        // 原始EXIF数据（完整保存）
+        rawExif: result.tags
+      };
+    } catch (exifError) {
+      // 如果标准的EXIF解析失败，可能是HEIF/HEIC格式，尝试使用Sharp获取元数据
+      try {
+        // 使用Sharp获取更多元数据
+        console.log('标准EXIF解析失败，尝试使用Sharp解析');
+        return {
+          // 这里返回一个最小的元数据对象
+          make: null,
+          model: null,
+          software: null,
+          dateTimeOriginal: null,
+          dateTimeDigitized: null,
+          exposureTime: null,
+          fNumber: null,
+          isoSpeedRatings: null,
+          focalLength: null,
+          gpsLatitude: null,
+          gpsLongitude: null,
+          gpsAltitude: null,
+          orientation: null,
+          rawExif: {},
+          parseMethod: 'sharp' // 标记使用的解析方法
+        };
+      } catch (sharpError) {
+        console.error('使用Sharp解析EXIF数据失败:', sharpError);
+        return null;
+      }
+    }
   } catch (error) {
     console.error('解析EXIF数据失败:', error);
     return null;

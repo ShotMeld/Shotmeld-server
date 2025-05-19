@@ -15,8 +15,19 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     // 读取文件内容到内存，以便后续处理
     const fileBuffer = await fs.readFile(file.path);
     
+    // 检查文件类型，HEIF/HEIC 文件需要特殊处理
+    const isHeifFormat = file.mimetype === 'image/heif' || file.mimetype === 'image/heic';
+    
     // 使用sharp读取图片元数据
-    const imageInfo = await sharp(fileBuffer).metadata();
+    let sharpInstance = sharp(fileBuffer);
+    
+    // 如果是 HEIF 格式，设置特定选项
+    if (isHeifFormat) {
+      // 确保 Sharp 能够正确处理 HEIF 文件
+      sharpInstance = sharpInstance.withMetadata();
+    }
+    
+    const imageInfo = await sharpInstance.metadata();
     
     // 解析EXIF信息
     let exifData = null;
@@ -54,11 +65,24 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     // 创建缩略图
     const thumbnailFilename = `thumb_${path.basename(file.path)}`;
     const thumbnailPath = path.join(tempDir, thumbnailFilename);
-
-    // 生成缩略图 (调整大小到300px宽度)
-    await sharp(fileBuffer)
-      .resize({ width: 300 })
-      .toFile(thumbnailPath);
+    
+    // 重用之前已定义的 isHeifFormat 变量，无需重新声明
+    // 创建新的 Sharp 实例用于缩略图生成
+    let thumbnailSharpInstance = sharp(fileBuffer);
+    
+    // 如果是 HEIF 格式，转换为 JPEG 格式的缩略图
+    if (isHeifFormat) {
+      // 先转换为 JPEG 然后生成缩略图
+      await thumbnailSharpInstance
+        .toFormat('jpeg')
+        .resize({ width: 300 })
+        .toFile(thumbnailPath);
+    } else {
+      // 生成缩略图 (调整大小到300px宽度)
+      await thumbnailSharpInstance
+        .resize({ width: 300 })
+        .toFile(thumbnailPath);
+    }
     
     // 可选：备份到本地目录
     const localPhotoPath = path.join(photoDir, file.filename);
@@ -157,6 +181,9 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
   const { photo, tempFilePath, thumbnailPath, localPhotoPath, localThumbPath } = photoData;
   
   try {
+    // 检查文件类型，HEIF/HEIC 文件可能需要特殊处理
+    const isHeifFormat = photo.mimeType === 'image/heif' || photo.mimeType === 'image/heic';
+    
     // 上传原图和缩略图到OSS
     const ossPhotoFilepath = `${ossPhotoPath}${photo.filename}`;
     const thumbnailFilename = `thumb_${path.basename(tempFilePath)}`;
