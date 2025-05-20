@@ -1,4 +1,4 @@
-const processUploadedPhoto = require('./utils');
+const { processUploadedPhoto } = require('./utils');
 const Tag = require('../../models/Tag');
 
 /**
