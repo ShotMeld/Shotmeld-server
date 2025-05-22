@@ -12,7 +12,7 @@ const updatePhoto = require('./updatePhoto');
 const deletePhotos = require('./deletePhotos');
 const reprocessExif = require('./reprocessExif');
 const generateTags = require('./generateTags');
-const searchPhotosByTitle = require('./searchPhotosByTitle');
+const searchPhotos = require('./searchPhotos');
 
 // 对所有路由应用认证中间件
 router.use(authenticate);
@@ -20,8 +20,8 @@ router.use(authenticate);
 // 获取照片列表 - GET /photos
 router.get('/', getPhotos);
 
-// 按照标题搜索照片 - GET /photos/search/title
-router.get('/search/title', searchPhotosByTitle);
+// 综合搜索照片（标题、标签、地点） - GET /photos/search
+router.get('/search', searchPhotos);
 
 // 上传新照片 - POST /photos
 router.post('/', upload.single('photo'), uploadPhoto);

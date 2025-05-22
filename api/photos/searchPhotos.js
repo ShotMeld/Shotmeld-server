@@ -1,24 +1,24 @@
 const Photo = require('../../models/Photo');
 
 /**
- * 根据标题搜索照片
- * 此接口专门用于按照照片标题进行搜索，支持分页和排序
+ * 综合搜索照片
+ * 此接口用于按照照片标题、标签或地点名称进行搜索，支持分页和排序
  */
-async function searchPhotosByTitle(req, res, next) {
+async function searchPhotos(req, res, next) {
   try {
     const { 
-      title, // 标题搜索关键词（必需）
+      searchKey, // 搜索关键词，可匹配标题、标签或地点
       page = 1, 
       limit = 50, 
       sort = 'takenAt', 
       order = 'desc'
     } = req.query;
     
-    // 检查标题参数是否存在
-    if (!title || typeof title !== 'string') {
+    // 检查搜索关键词是否存在
+    if (!searchKey || typeof searchKey !== 'string') {
       return res.status(400).json({ 
-        error: 'TITLE_REQUIRED',
-        message: '搜索关键词是必需的' 
+        error: 'SEARCH_KEY_REQUIRED',
+        message: '请提供搜索关键词' 
       });
     }
     
@@ -33,7 +33,11 @@ async function searchPhotosByTitle(req, res, next) {
     // 构建查询条件
     const query = { 
       user: req.user.id,
-      title: { $regex: title, $options: 'i' } // 不区分大小写的标题搜索
+      $or: [
+        { title: { $regex: searchKey, $options: 'i' } }, // 匹配标题
+        { tags: { $regex: searchKey, $options: 'i' } }, // 匹配标签
+        { 'location.name': { $regex: searchKey, $options: 'i' } } // 匹配地点名称
+      ]
     };
     
     // 统计符合条件的照片总数
@@ -56,11 +60,11 @@ async function searchPhotosByTitle(req, res, next) {
       page: pageNum,
       limit: limitNum,
       totalPages,
-      searchTerm: title
+      searchKey
     });
   } catch (error) {
     next(error);
   }
 }
 
-module.exports = searchPhotosByTitle;
+module.exports = searchPhotos;

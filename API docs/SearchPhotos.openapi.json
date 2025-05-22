@@ -1,31 +1,22 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.0",
   "info": {
-    "title": "Search Photos by Title or Tag",
-    "description": "API for searching photos by title or tag.",
-    "version": "1.1.0"
+    "title": "Search Photos",
+    "description": "API for comprehensively searching photos by title, tags, or location.",
+    "version": "2.0.0"
   },
   "paths": {
-    "/photos/search/title": {
+    "/photos/search": {
       "get": {
-        "summary": "根据标题或标签搜索照片",
-        "description": "通过标题关键词或标签关键词搜索用户的照片，支持分页和排序。",
+        "summary": "综合搜索照片",
+        "description": "通过关键词搜索用户的照片，可匹配标题、标签或地点，支持分页和排序。",
         "tags": ["照片管理"],
         "parameters": [
           {
-            "name": "title",
+            "name": "searchKey",
             "in": "query",
-            "required": false,
-            "description": "搜索的标题关键词",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tag",
-            "in": "query",
-            "required": false,
-            "description": "搜索的标签关键词",
+            "required": true,
+            "description": "搜索关键词，可匹配标题、标签或地点名称",
             "schema": {
               "type": "string"
             }
@@ -101,19 +92,9 @@
                       "type": "integer",
                       "description": "总页数"
                     },
-                    "searchTerm": {
-                      "type": "object",
-                      "description": "搜索的关键词",
-                      "properties": {
-                        "title": {
-                          "type": "string",
-                          "description": "搜索的标题关键词"
-                        },
-                        "tag": {
-                          "type": "string",
-                          "description": "搜索的标签关键词"
-                        }
-                      }
+                    "searchKey": {
+                      "type": "string",
+                      "description": "搜索关键词"
                     }
                   }
                 }
@@ -129,19 +110,19 @@
                   "properties": {
                     "error": {
                       "type": "string",
-                      "description": "错误代码，如 'SEARCH_PARAM_REQUIRED'"
+                      "description": "错误代码，如 'SEARCH_KEY_REQUIRED'"
                     },
                     "message": {
                       "type": "string",
-                      "description": "错误信息，如 '搜索需要提供标题关键词或标签关键词'"
+                      "description": "错误信息，如 '请提供搜索关键词'"
                     }
                   }
                 },
                 "examples": {
                   "missingParams": {
                     "value": {
-                      "error": "SEARCH_PARAM_REQUIRED",
-                      "message": "搜索需要提供标题关键词或标签关键词"
+                      "error": "SEARCH_KEY_REQUIRED",
+                      "message": "请提供搜索关键词"
                     }
                   }
                 }
@@ -159,38 +140,71 @@
         "properties": {
           "_id": {
             "type": "string",
-            "description": "照片的唯一标识符"
+            "description": "照片唯一标识符"
           },
           "title": {
-            "type": "string",
+            "type": ["string", "null"],
             "description": "照片标题"
           },
           "description": {
-            "type": "string",
+            "type": ["string", "null"],
             "description": "照片描述"
+          },
+          "filename": {
+            "type": "string",
+            "description": "文件名"
+          },
+          "fileSize": {
+            "type": "number",
+            "description": "文件大小（字节）"
           },
           "url": {
             "type": "string",
-            "description": "照片的URL"
+            "description": "照片URL"
           },
           "thumbnailUrl": {
-            "type": "string",
-            "description": "缩略图的URL"
+            "type": ["string", "null"],
+            "description": "缩略图URL"
           },
           "takenAt": {
-            "type": "string",
+            "type": ["string", "null"],
             "format": "date-time",
-            "description": "照片拍摄时间"
+            "description": "拍摄时间"
+          },
+          "location": {
+            "type": ["object", "null"],
+            "description": "拍摄地点",
+            "properties": {
+              "latitude": {
+                "type": "number",
+                "description": "纬度"
+              },
+              "longitude": {
+                "type": "number",
+                "description": "经度"
+              },
+              "name": {
+                "type": ["string", "null"],
+                "description": "地点名称"
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "照片标签",
+            "items": {
+              "type": "string"
+            }
           },
           "createdAt": {
             "type": "string",
             "format": "date-time",
-            "description": "照片创建时间"
+            "description": "创建时间"
           },
           "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "description": "照片更新时间"
+            "description": "更新时间"
           }
         }
       }
