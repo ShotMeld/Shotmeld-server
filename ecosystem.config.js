@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: "shotmeld-server",
-    script: "index.js",
+    script: "src/index.js",
     watch: false,
     max_memory_restart: "512M",
     kill_timeout: 3000,
