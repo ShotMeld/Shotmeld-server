@@ -1,4 +1,3 @@
-const Tag = require('../../models/Tag');
 const Photo = require('../../models/Photo');
 
 /**
@@ -7,29 +6,33 @@ const Photo = require('../../models/Photo');
  */
 async function getAllTags(req, res, next) {
   try {
-    // 查询所有标签
-    const tags = await Tag.find({ user: req.user.id });
+    // 聚合查询，直接从照片中获取标签统计信息
+    const tagsAggregation = await Photo.aggregate([
+      // 只查询当前用户的照片
+      { $match: { user: req.user.id } },
+      // 解构标签数组
+      { $unwind: { path: "$tags", preserveNullAndEmptyArrays: false } },
+      // 按标签名分组并计数
+      { 
+        $group: { 
+          _id: "$tags", 
+          name: { $first: "$tags" },
+          photoCount: { $sum: 1 } 
+        } 
+      },
+      // 排序：按照照片数量降序
+      { $sort: { photoCount: -1 } },
+      // 格式化输出结果
+      { 
+        $project: { 
+          _id: 0, 
+          name: 1, 
+          photoCount: 1
+        } 
+      }
+    ]);
     
-    // 为每个标签计算照片数量
-    const tagList = [];
-    
-    for (const tag of tags) {
-      // 计算使用此标签的照片数量
-      const photoCount = await Photo.countDocuments({ 
-        user: req.user.id,
-        tags: tag.name
-      });
-      
-      // 设置虚拟字段
-      tag.photoCount = photoCount;
-      
-      tagList.push(tag);
-    }
-    
-    // 按照使用次数降序排序
-    tagList.sort((a, b) => b.photoCount - a.photoCount);
-    
-    res.status(200).json(tagList);
+    res.status(200).json(tagsAggregation);
   } catch (error) {
     next(error);
   }
