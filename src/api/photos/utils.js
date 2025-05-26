@@ -250,7 +250,8 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
         if (recognizedTags && recognizedTags.length > 0) {
           // 只提取准确度高于30%的标签
           autoTags = recognizedTags
-            .filter(tag => tag.confidence >= 30)
+            .filter(tag =>
+              tag.confidence >= 30 && tag.value !== '其他')
             .map(tag => tag.value);
         }
       } catch (tagError) {

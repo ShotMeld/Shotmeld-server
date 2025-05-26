@@ -10,7 +10,7 @@ const Tag = require('../../models/Tag');
 async function batchUpload(req, res, next) {
   try {
     const files = req.files;
-    
+
     if (!files || !files.length) {
       return res.status(400).json({
         code: 400,
@@ -20,7 +20,7 @@ async function batchUpload(req, res, next) {
 
     // 解析公共元数据
     let commonMetadata = {};
-    
+
     // 检查是否有metadata字段
     if (req.body.metadata) {
       try {
@@ -43,7 +43,8 @@ async function batchUpload(req, res, next) {
     // 解析标签
     let tags = [];
     if (req.body.tags) {
-      tags = req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      tags = req.body.tags.split(',').map(tag => tag.trim()).filter(tag =>
+        tag.confidence >= 30 && tag.value !== '其他');
     }
 
     // 解析相册ID
@@ -100,7 +101,7 @@ async function batchUpload(req, res, next) {
 
     // 确保所有标签都存在于数据库中
     if (tags.length > 0) {
-      await Promise.all(tags.map(tagName => 
+      await Promise.all(tags.map(tagName =>
         Tag.findOneAndUpdate(
           { name: tagName, user: req.user.id },
           { name: tagName, user: req.user.id },

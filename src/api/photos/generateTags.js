@@ -52,8 +52,10 @@ async function generateTags(req, res, next) {
       });
     }
 
-    // 过滤并提取准确度高于30%的标签值
-    const filteredTags = recognizedTags.filter(tag => tag.confidence >= 30);
+    // 过滤并提取准确度高于30%的标签值，同时过滤掉"其他"标签
+    const filteredTags = recognizedTags.filter(tag => 
+      tag.confidence >= 30 && tag.value !== '其他'
+    );
     
     if (filteredTags.length === 0) {
       return res.status(200).json({
