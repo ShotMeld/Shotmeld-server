@@ -13,6 +13,7 @@ const deletePhotos = require('./deletePhotos');
 const reprocessExif = require('./reprocessExif');
 const generateTags = require('./generateTags');
 const searchPhotos = require('./searchPhotos');
+const semanticSearchPhotos = require('./semanticSearchPhotos');
 
 // 对所有路由应用认证中间件
 router.use(authenticate);
@@ -22,6 +23,9 @@ router.get('/', getPhotos);
 
 // 综合搜索照片（标题、标签、地点） - GET /photos/search
 router.get('/search', searchPhotos);
+
+// 语义高级搜索照片（包含AI语义标签匹配） - GET /photos/semantic-search
+router.get('/semantic-search', semanticSearchPhotos);
 
 // 上传新照片 - POST /photos
 router.post('/', upload.single('photo'), uploadPhoto);

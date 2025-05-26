@@ -11,5 +11,10 @@ module.exports = {
         accessKeyId: process.env.ALIBABA_CLOUD_ACCESS_KEY_ID,
         accessKeySecret: process.env.ALIBABA_CLOUD_ACCESS_KEY_SECRET,
         autoTagPhotos: process.env.AUTO_TAG_PHOTOS === 'true' || true // 默认开启自动标签功能
+    },
+    ai: {
+        dashscopeApiKey: process.env.DASHSCOPE_API_KEY,
+        baseURL: process.env.AI_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model: process.env.AI_MODEL || "qwen-turbo-latest"
     }
 };
