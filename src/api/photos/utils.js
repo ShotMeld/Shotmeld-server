@@ -8,6 +8,7 @@ const config = require('../../config/config');
 const { uploadFile, getFileUrl, deleteFile } = require('../../utils/oss');
 const { parseExifFromFile } = require('../../utils/exif');
 const { recognizeImageTags } = require('../../utils/imageRecognition');
+const thumbhash = require('thumbhash');
 
 // 处理上传图片流程第一阶段：创建本地记录并返回
 async function processUploadedPhotoInitial(file, userId, metadata = {}) {
@@ -29,6 +30,28 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     
     const imageInfo = await sharpInstance.metadata();
     
+    // 计算 ThumbHash
+    let thumbHash = null;
+    try {
+      // 获取 RGBA 像素数据用于计算 ThumbHash
+      const { data, info } = await sharp(fileBuffer)
+        .ensureAlpha() // 确保有 alpha 通道
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      // 计算 ThumbHash
+      thumbHash = thumbhash.rgbaToThumbHash(
+        info.width,
+        info.height,
+        new Uint8Array(data)
+      );
+
+      // 转换为 base64 格式便于存储
+      thumbHash = Buffer.from(thumbHash).toString('base64');
+    } catch (hashError) {
+      console.error("计算 ThumbHash 失败:", hashError);
+    }
+ 
     // 解析EXIF信息
     let exifData = null;
     let takenAt = null;
@@ -121,6 +144,7 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     const thumbnailUrl = `${serverBaseUrl}/uploads/thumbnails/${thumbnailFilename}`;
     
     // 创建照片记录（包含EXIF信息）
+    // 创建照片记录（包含 EXIF 信息和 ThumbHash）
     const photo = new Photo({
       title: metadata.title || file.originalname.split('.')[0],
       description: metadata.description || null,
@@ -137,7 +161,8 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
       takenAt: takenAt,
       location: location,
       metadata: {
-        exif: exifData
+        exif: exifData,
+        thumbHash: thumbHash  // 将 ThumbHash 添加到 metadata 中
       }
     });
 
