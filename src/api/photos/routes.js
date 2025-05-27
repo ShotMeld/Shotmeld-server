@@ -14,8 +14,14 @@ const reprocessExif = require('./reprocessExif');
 const generateTags = require('./generateTags');
 const searchPhotos = require('./searchPhotos');
 const semanticSearchPhotos = require('./semanticSearchPhotos');
+const sharePhoto = require('./sharePhoto');
+const getSharedPhoto = require('./getSharedPhoto');
 
-// 对所有路由应用认证中间件
+// 无需认证的路由
+// 获取共享照片 - GET /photos/shared/:photoId
+router.get('/shared/:photoId', getSharedPhoto);
+
+// 对所有其他路由应用认证中间件
 router.use(authenticate);
 
 // 获取照片列表 - GET /photos
@@ -38,6 +44,9 @@ router.get('/:photoId', getPhotoById);
 
 // 更新照片信息 - PUT /photos/:photoId
 router.put('/:photoId', updatePhoto);
+
+// 设置照片为可分享 - POST /photos/share/:photoId
+router.post('/share/:photoId', sharePhoto);
 
 // 重新处理照片的EXIF信息 - POST /photos/:photoId/exif
 router.post('/:photoId/exif', reprocessExif);

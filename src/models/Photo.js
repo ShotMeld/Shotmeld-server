@@ -75,6 +75,14 @@ const photoSchema = new mongoose.Schema({
     type: Object,
     default: {}  // 元数据
   },
+  isShared: {
+    type: Boolean,
+    default: false  // 是否可分享（无需认证可访问）
+  },
+  shareCreatedAt: {
+    type: Date,
+    default: null  // 分享创建时间
+  },
   user: {
     type: String,
     ref: 'User',
