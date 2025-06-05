@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
-const config = require('./config/config');
+const config = require('../src/config/config');
 
 // 导入所有模型
-const User = require('./models/User');
-const Photo = require('./models/Photo');
-const Album = require('./models/Album');
-const Tag = require('./models/Tag');
+const User = require('../src/models/User');
+const Photo = require('../src/models/Photo');
+const Album = require('../src/models/Album');
+const Tag = require('../src/models/Tag');
 
 async function clearDatabase() {
   try {
