@@ -24,7 +24,7 @@ async function ensureBucketExists() {
         }
         
         const bucketInfo = await client.getBucketInfo(bucketName);
-        console.log('Bucket已存在:', bucketInfo.bucket.Name);
+        console.log('OSS 配置成功');
         
         // 确保图片和缩略图目录存在（实际上OSS没有文件夹概念，但我们可以通过前缀来模拟）
         await client.put(`photos/.folder`, Buffer.from(''));

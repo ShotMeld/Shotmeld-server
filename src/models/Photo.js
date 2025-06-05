@@ -72,8 +72,15 @@ const photoSchema = new mongoose.Schema({
     default: null  // 拍摄地点
   },
   metadata: {
-    type: Object,
-    default: {}  // 元数据
+    exif: {
+      type: Object,
+      default: null
+    },
+    thumbHash: {
+      type: String,
+      default: null
+    },
+    // ...existing code...
   },
   isShared: {
     type: Boolean,

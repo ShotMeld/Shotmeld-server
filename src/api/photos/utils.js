@@ -3,6 +3,7 @@ const Album = require('../../models/Album');
 const path = require('path');
 const fs = require('fs-extra');
 const sharp = require('sharp');
+const thumbhash = require('thumbhash');
 const { tempDir, photoDir, thumbnailDir, ossPhotoPath, ossThumbnailPath } = require('../../config/upload');
 const config = require('../../config/config');
 const { uploadFile, getFileUrl, deleteFile } = require('../../utils/oss');
@@ -89,6 +90,29 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     const thumbnailFilename = `thumb_${path.basename(file.path)}`;
     const thumbnailPath = path.join(tempDir, thumbnailFilename);
     
+    // 计算 ThumbHash
+    let thumbHash = null;
+    try {
+      // 为 ThumbHash 计算创建一个小尺寸的 RGBA 图像
+      const thumbHashBuffer = await sharp(fileBuffer)
+        .resize(100, 100, { fit: 'inside' })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      
+      const { data, info } = thumbHashBuffer;
+      const thumbHashBytes = thumbhash.rgbaToThumbHash(
+        info.width,
+        info.height,
+        new Uint8Array(data)
+      );
+      
+      // 将 ThumbHash 转换为 base64 字符串存储
+      thumbHash = Buffer.from(thumbHashBytes).toString('base64');
+    } catch (thumbHashError) {
+      console.error("计算 ThumbHash 失败:", thumbHashError);
+    }
+    
     // 重用之前已定义的 isHeifFormat 变量，无需重新声明
     // 创建新的 Sharp 实例用于缩略图生成
     let thumbnailSharpInstance = sharp(fileBuffer);
@@ -137,7 +161,8 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
       takenAt: takenAt,
       location: location,
       metadata: {
-        exif: exifData
+        exif: exifData,
+        thumbHash: thumbHash
       }
     });
 

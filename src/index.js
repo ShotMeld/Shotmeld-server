@@ -50,9 +50,7 @@ app.use((err, req, res, next) => {
   try {
     // 确保OSS Bucket存在
     if (process.env.OSS_ACCESS_KEY_ID && process.env.OSS_ACCESS_KEY_SECRET && process.env.OSS_BUCKET) {
-      console.log('正在验证OSS配置...');
       await ensureBucketExists();
-      console.log('OSS配置验证完成');
     } else {
       console.warn('警告: 未配置OSS环境变量，文件上传功能可能无法正常工作');
     }

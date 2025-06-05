@@ -8,6 +8,7 @@ const photoRoutes = require('./photos/routes');
 const timelineRoutes = require('./photos/timeline-routes');
 const tagRoutes = require('./tags/routes');
 const webhookRoutes = require('./webhook/routes');
+const duplicatesRoutes = require('./photos/duplicates');
 
 // 注册路由
 router.use('/auth', authRoutes);
@@ -16,5 +17,6 @@ router.use('/photos', photoRoutes);
 router.use('/timeline', timelineRoutes);
 router.use('/tags', tagRoutes);
 router.use('/webhook', webhookRoutes);
+router.use('/photos-tool', duplicatesRoutes);
 
 module.exports = router;
