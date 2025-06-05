@@ -28,6 +28,11 @@ router.get('/photos-tool/duplicates', authenticate, async (req, res) => {
 });
 
 // 获取异步任务状态
+// 返回数据结构说明：
+// - 对于重复照片检测任务，result.duplicateGroups 包含多个照片组
+// - 每个组是一个数组，包含相似照片的完整 Photo 模型对象
+// - Photo 模型包含：id, title, description, filename, fileSize, mimeType, width, height, 
+//   url, thumbnailUrl, takenAt, location, metadata, isShared, user, albums, tags, createdAt, updatedAt
 router.get('/photos-tool/task/status/:taskId', authenticate, async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -58,7 +63,11 @@ router.get('/photos-tool/task/status/:taskId', authenticate, async (req, res) =>
     
     // 如果任务完成，包含结果
     if (task.status === 'completed' && task.result) {
-      response.result = task.result;
+      response.result = {
+        duplicateGroups: task.result, // 每个组包含相似的照片完整对象数组
+        totalGroups: task.result.length,
+        totalDuplicatePhotos: task.result.reduce((sum, group) => sum + group.length, 0)
+      };
     }
     
     // 如果任务失败，包含错误信息

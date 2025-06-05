@@ -27,45 +27,51 @@ async function detectSimilarPhotos(userId, threshold = 5) {
       user: userId,
       'metadata.thumbHash': { $exists: true, $ne: null }
     }).select('_id metadata.thumbHash filename');
-    
+
     if (photos.length < 2) {
       return []; // 少于2张照片，无法检测重复
     }
-    
+
     const duplicateGroups = [];
     const processedPhotos = new Set();
-    
+
     // 比较每对照片
     for (let i = 0; i < photos.length; i++) {
       if (processedPhotos.has(photos[i]._id.toString())) {
         continue;
       }
-      
-      const currentGroup = [photos[i]._id.toString()];
+
+      const currentGroupIds = [photos[i]._id.toString()];
       const currentHash = photos[i].metadata.thumbHash;
-      
+
       for (let j = i + 1; j < photos.length; j++) {
         if (processedPhotos.has(photos[j]._id.toString())) {
           continue;
         }
-        
+
         const compareHash = photos[j].metadata.thumbHash;
         const distance = hammingDistance(currentHash, compareHash);
-        
+
         // 如果汉明距离小于阈值，认为是相似照片
         if (distance <= threshold) {
-          currentGroup.push(photos[j]._id.toString());
+          currentGroupIds.push(photos[j]._id.toString());
           processedPhotos.add(photos[j]._id.toString());
         }
       }
-      
-      // 如果找到了相似照片（组中有多于1张照片），添加到结果中
-      if (currentGroup.length > 1) {
-        duplicateGroups.push(currentGroup);
-        currentGroup.forEach(id => processedPhotos.add(id));
+
+      // 如果找到了相似照片（组中有多于1张照片），获取完整照片信息并添加到结果中
+      if (currentGroupIds.length > 1) {
+        // 获取当前组所有照片的完整信息
+        const groupPhotos = await Photo.find({
+          _id: { $in: currentGroupIds },
+          user: userId
+        });
+
+        duplicateGroups.push(groupPhotos);
+        currentGroupIds.forEach(id => processedPhotos.add(id));
       }
     }
-    
+
     return duplicateGroups;
   } catch (error) {
     console.error('检测相似照片时出错:', error);
