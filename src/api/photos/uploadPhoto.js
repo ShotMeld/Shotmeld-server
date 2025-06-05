@@ -1,5 +1,6 @@
 const { processUploadedPhotoInitial, processUploadedPhotoFinal } = require('./utils');
 const Album = require('../../models/Album');
+const crypto = require('crypto');
 
 /**
  * 上传新照片
@@ -88,10 +89,17 @@ async function uploadPhoto(req, res, next) {
     try {
       // 第一阶段：快速处理并返回初始照片信息（使用本地URL）
       const initialPhotoData = await processUploadedPhotoInitial(file, req.user.id, metadata);
-      
+
+      // 计算缩略图的哈希值
+      if (initialPhotoData.photo.thumbnailUrl) {
+        const hash = crypto.createHash('sha256');
+        hash.update(initialPhotoData.photo.thumbnailUrl);
+        initialPhotoData.photo.thumbHash = hash.digest('hex').substring(0, 64); // 确保64位哈希值
+      }
+
       // 立即返回成功响应，包括刚创建的照片信息
       res.status(201).json(initialPhotoData.photo);
-      
+
       // 第二阶段：异步处理照片上传到OSS、EXIF解析和标签识别
       // 这部分不会阻塞响应，用户不需要等待
       processUploadedPhotoFinal(initialPhotoData, req.user.id, metadata)
