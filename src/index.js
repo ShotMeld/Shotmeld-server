@@ -4,6 +4,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const config = require('./config/config');
+const photosRouter = require('./api/photos/routes');
 
 // 引入API路由
 const apiRoutes = require('./api');
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use('/photos', photosRouter);
 
 // 配置静态文件服务
 // 生产环境主要通过OSS访问，但本地备份也可用作过渡期访问
@@ -35,7 +37,15 @@ mongoose.connect(config.MONGODB_URI)
 
 // 路由注册
 app.use('/', apiRoutes);
-
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.path} not found`
+  });
+});
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -44,6 +54,7 @@ app.use((err, req, res, next) => {
     message: '服务器内部错误'
   });
 });
+
 
 // 初始化OSS配置并启动服务器
 (async () => {

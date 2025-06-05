@@ -16,6 +16,7 @@ const searchPhotos = require('./searchPhotos');
 const semanticSearchPhotos = require('./semanticSearchPhotos');
 const sharePhoto = require('./sharePhoto');
 const getSharedPhoto = require('./getSharedPhoto');
+const getDuplicateImages = require('./getDuplicateImages');
 
 // 无需认证的路由
 // 获取共享照片 - GET /photos/shared/:photoId
@@ -56,5 +57,8 @@ router.post('/:photoId/tags/generate', generateTags);
 
 // 批量删除照片 - DELETE /photos
 router.delete('/', deletePhotos);
+
+// 新增：获取重复图片列表 - GET /albums/duplicates
+router.get('/duplicates', getDuplicateImages);
 
 module.exports = router;

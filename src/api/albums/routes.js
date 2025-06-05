@@ -40,3 +40,4 @@ router.post('/:albumId/photos', addPhotoToAlbum);
 router.delete('/:albumId/photos', removePhotoFromAlbum);
 
 module.exports = router;
+

@@ -18,8 +18,15 @@ const geoLocationSchema = new mongoose.Schema({
   name: {
     type: String,
     default: null  // 位置名称
+  },
+  uuid: { type: String, required: true, unique: true },
+  thumbHash: { type: String, index: true },
+  metadata: {
+    width: Number,
+    height: Number,
+    format: String
   }
-}, { _id: false });
+}, { timestamps: true });
 
 // 照片模式
 const photoSchema = new mongoose.Schema({
