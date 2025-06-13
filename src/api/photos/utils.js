@@ -95,6 +95,7 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     try {
       // 为 ThumbHash 计算创建一个小尺寸的 RGBA 图像
       const thumbHashBuffer = await sharp(fileBuffer)
+        .autoOrient() // 自动根据EXIF方向信息旋转图片
         .resize(100, 100, { fit: 'inside' })
         .ensureAlpha()
         .raw()
@@ -121,15 +122,18 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     if (isHeifFormat) {
       // 先转换为 JPEG 然后生成缩略图
       await thumbnailSharpInstance
+        .autoOrient() // 自动根据EXIF方向信息旋转图片
         .toFormat('jpeg')
         .resize({ width: 300 })
         .toFile(thumbnailPath);
     } else {
       // 生成缩略图 (调整大小到300px宽度)
       await thumbnailSharpInstance
+        .autoOrient() // 自动根据EXIF方向信息旋转图片
         .resize({ width: 300 })
         .toFile(thumbnailPath);
     }
+    // 许多相机和手机拍摄的照片会在EXIF数据中包含方向信息
     
     // 可选：备份到本地目录
     const localPhotoPath = path.join(photoDir, file.filename);
