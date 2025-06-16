@@ -106,8 +106,8 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
       }
     }
     
-    // 创建缩略图（使用 WebP 格式）
-    const thumbnailFilename = `thumb_${path.basename(file.path, path.extname(file.path))}.webp`;
+    // 创建缩略图（使用 JPG 格式）
+    const thumbnailFilename = `thumb_${path.basename(file.path, path.extname(file.path))}.jpg`;
     const thumbnailPath = path.join(tempDir, thumbnailFilename);
     
     // 计算 ThumbHash
@@ -137,11 +137,11 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
     // 创建新的 Sharp 实例用于缩略图生成
     let thumbnailSharpInstance = sharp(fileBuffer);
     
-    // 生成 WebP 格式的缩略图 (调整大小到600px宽度，提高质量)
+    // 生成 JPG 格式的缩略图 (调整大小到600px宽度，提高质量)
     await thumbnailSharpInstance
       .autoOrient() // 自动根据EXIF方向信息旋转图片
       .resize({ width: 600 })
-      .webp({ quality: 85 }) // 使用 WebP 格式，85% 质量
+      .jpeg({ quality: 85 }) // 使用 JPG 格式，85% 质量
       .toFile(thumbnailPath);
     // 许多相机和手机拍摄的照片会在EXIF数据中包含方向信息
     
@@ -232,7 +232,7 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
         await fs.unlink(file.path);
       }
 
-      const thumbnailPath = path.join(tempDir, `thumb_${path.basename(file.filename, path.extname(file.filename))}.webp`);
+      const thumbnailPath = path.join(tempDir, `thumb_${path.basename(file.filename, path.extname(file.filename))}.jpg`);
       if (fs.existsSync(thumbnailPath)) {
         await fs.unlink(thumbnailPath);
       }
@@ -251,7 +251,7 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
   try {
     // 上传原图和缩略图到OSS（串行上传）
     const ossPhotoFilepath = `${ossPhotoPath}${photo.filename}`;
-    const thumbnailFilename = `thumb_${path.basename(tempFilePath, path.extname(tempFilePath))}.webp`;
+    const thumbnailFilename = `thumb_${path.basename(tempFilePath, path.extname(tempFilePath))}.jpg`;
     const ossThumbnailFilepath = `${ossThumbnailPath}${thumbnailFilename}`;
     
     // 先上传原图到OSS
@@ -282,12 +282,7 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
     let autoTags = [];
     if (config.aliCloud?.autoTagPhotos) {
       try {
-        const fileStats = await fs.stat(localPhotoPath);
-        const fileSizeInMB = fileStats.size / (1024 * 1024);
-        
-        const recognizedTags = await recognizeImageTags(
-          fileSizeInMB > 3 ? localThumbPath : localPhotoPath
-        );
+        const recognizedTags = await recognizeImageTags(localPhotoPath, localThumbPath);
         
         if (recognizedTags && recognizedTags.length > 0) {
           autoTags = recognizedTags

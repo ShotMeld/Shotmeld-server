@@ -26,24 +26,29 @@ const createImageRecogClient = () => {
 /**
  * 识别图片标签
  * @param {string} imagePath - 图片的本地路径
+ * @param {string} thumbPath - 缩略图路径（可选）
  * @returns {Promise<Array>} - 返回识别的标签数组
  */
-const recognizeImageTags = async (imagePath) => {
+const recognizeImageTags = async (imagePath, thumbPath = null) => {
   try {
     // 检查文件是否存在
     if (!fs.existsSync(imagePath)) {
       throw new Error(`图片文件不存在: ${imagePath}`);
     }
     
-    // 检查文件大小（阿里云限制为4MB）
+    // 检查文件大小并智能选择图片
     const stats = fs.statSync(imagePath);
     const fileSizeInMB = stats.size / (1024 * 1024);
-    if (fileSizeInMB > 4) {
-      throw new Error(`文件大小超出限制: ${fileSizeInMB.toFixed(2)}MB (最大4MB)`);
-    }
     
+    let targetPath = imagePath;
+    // 如果原图超过3MB且提供了缩略图路径，使用缩略图
+    if (fileSizeInMB > 3 && thumbPath && fs.existsSync(thumbPath)) {
+      targetPath = thumbPath;
+      console.log(`使用缩略图进行识别: ${fileSizeInMB.toFixed(2)}MB > 3MB`);
+    }
+
     const client = createImageRecogClient();
-    const fileStream = fs.createReadStream(imagePath);
+    const fileStream = fs.createReadStream(targetPath);
     
     const taggingImageAdvanceRequest = new ImagerecogClient.TaggingImageAdvanceRequest({
       imageURLObject: fileStream
