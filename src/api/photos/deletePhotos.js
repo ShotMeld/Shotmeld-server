@@ -60,7 +60,7 @@ async function deletePhotos(req, res, next) {
       
       // 删除文件系统中的照片文件和缩略图
       const photoPath = path.join(photoDir, photo.filename);
-      const thumbnailFilename = `thumb_${photo.filename}`;
+      const thumbnailFilename = `thumb_${path.basename(photo.filename, path.extname(photo.filename))}.webp`;
       const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
       
       // 删除OSS中的照片和缩略图
