@@ -63,10 +63,18 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
           exifData.gpsLatitude
         );
         
+        // 确保name是字符串类型
+        let locationName = name;
+        if (Array.isArray(locationName)) {
+          locationName = locationName.length > 0 ? locationName[0] : null;
+        } else if (locationName && typeof locationName !== 'string') {
+          locationName = String(locationName);
+        }
+        
         location = {
           latitude: latitude, // WGS84 latitude (as returned by convertGPSToAMap)
           longitude: longitude, // WGS84 longitude (as returned by convertGPSToAMap)
-          name: name, // formatted_address from Gaode API
+          name: locationName, // formatted_address from Gaode API
           originalGPS: { // 保存原始GPS坐标
             latitude: exifData.gpsLatitude,
             longitude: exifData.gpsLongitude
@@ -83,6 +91,18 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
             longitude: exifData.gpsLongitude
           }
         };
+      }
+    }
+    
+    // 进一步验证location数据
+    if (location) {
+      // 确保name字段是字符串或null
+      if (location.name && typeof location.name !== 'string') {
+        if (Array.isArray(location.name)) {
+          location.name = location.name.length > 0 ? String(location.name[0]) : null;
+        } else {
+          location.name = String(location.name);
+        }
       }
     }
     
@@ -191,6 +211,12 @@ async function processUploadedPhotoInitial(file, userId, metadata = {}) {
       }
     }
 
+    // 临时保存文件路径信息到photo对象中（不存储到数据库）
+    photo.tempFilePath = file.path;
+    photo.thumbnailPath = thumbnailPath;
+    photo.localPhotoPath = localPhotoPath;
+    photo.localThumbPath = localThumbPath;
+
     return {
       photo,
       tempFilePath: file.path,
@@ -223,29 +249,25 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
   const { photo, tempFilePath, thumbnailPath, localPhotoPath, localThumbPath } = photoData;
   
   try {
-    // 检查文件类型，HEIF/HEIC 文件可能需要特殊处理
-    const isHeifFormat = photo.mimeType === 'image/heif' || photo.mimeType === 'image/heic';
-    
-    // 上传原图和缩略图到OSS
+    // 上传原图和缩略图到OSS（串行上传）
     const ossPhotoFilepath = `${ossPhotoPath}${photo.filename}`;
     const thumbnailFilename = `thumb_${path.basename(tempFilePath, path.extname(tempFilePath))}.webp`;
     const ossThumbnailFilepath = `${ossThumbnailPath}${thumbnailFilename}`;
     
-    // 上传原图到OSS
+    // 先上传原图到OSS
     await uploadFile(tempFilePath, ossPhotoFilepath);
-    // 上传缩略图到OSS
+    
+    // 再上传缩略图到OSS
     await uploadFile(thumbnailPath, ossThumbnailFilepath);
     
-    // 生成OSS图片URL（或使用OSS域名）
+    // 生成OSS图片URL
     let photoUrl, thumbnailUrl;
     
     if (process.env.OSS_CUSTOM_DOMAIN) {
-      // 如果配置了自定义域名，使用自定义域名
       photoUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossPhotoFilepath}`;
       thumbnailUrl = `${process.env.OSS_CUSTOM_DOMAIN}/${ossThumbnailFilepath}`;
     } else {
-      // 否则使用签名URL（有时效性）或默认的OSS域名URL
-      photoUrl = getFileUrl(ossPhotoFilepath, 3600 * 24 * 365); // 1年有效期
+      photoUrl = getFileUrl(ossPhotoFilepath, 3600 * 24 * 365);
       thumbnailUrl = getFileUrl(ossThumbnailFilepath, 3600 * 24 * 365);
     }
     
@@ -253,28 +275,27 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
     await fs.remove(tempFilePath);
     await fs.remove(thumbnailPath);
 
+    // 添加短暂延迟，确保OSS上传完全完成
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     // 使用阿里云图像识别API识别照片标签
     let autoTags = [];
     if (config.aliCloud?.autoTagPhotos) {
       try {
-        // 检查文件大小，如果超过3MB则使用缩略图进行识别（阿里平台的限制）
         const fileStats = await fs.stat(localPhotoPath);
         const fileSizeInMB = fileStats.size / (1024 * 1024);
         
-        // 使用本地保存的照片文件路径进行标签识别
         const recognizedTags = await recognizeImageTags(
           fileSizeInMB > 3 ? localThumbPath : localPhotoPath
         );
         
         if (recognizedTags && recognizedTags.length > 0) {
-          // 只提取准确度高于30%的标签
           autoTags = recognizedTags
-            .filter(tag =>
-              tag.confidence >= 30 && tag.value !== '其他')
+            .filter(tag => tag.confidence >= 30 && tag.value !== '其他')
             .map(tag => tag.value);
         }
       } catch (tagError) {
-        console.error('图像标签识别失败:', tagError);
+        console.error('图像标签识别失败:', tagError.message || tagError);
       }
     }
     
@@ -304,25 +325,37 @@ async function processUploadedPhotoFinal(photoData, userId, metadata = {}) {
     
     return photo;
   } catch (error) {
-    console.error('处理照片最终阶段失败:', error);
+    console.error('处理照片最终阶段失败:', error.message || error);
     
-    // 如果后续处理失败，记录错误但不影响已保存的照片
+    // 如果后续处理失败，尝试更新照片状态但不删除记录
     try {
-      // 尝试从OSS删除
-      const ossPhotoKey = `${ossPhotoPath}${photo.filename}`;
-      const ossThumbnailKey = `${ossThumbnailPath}thumb_${path.basename(photo.filename, path.extname(photo.filename))}.webp`;
+      // 记录错误信息到照片的metadata中
+      if (!photo.metadata) photo.metadata = {};
+      photo.metadata.processingError = {
+        message: error.message || 'Unknown error',
+        timestamp: new Date()
+      };
       
-      try {
-        await deleteFile(ossPhotoKey);
-        await deleteFile(ossThumbnailKey);
-      } catch (ossError) {
-        console.error('清理OSS文件失败:', ossError);
+      // 如果OSS上传失败，保持本地URL
+      if (!error.message?.includes('上传文件失败')) {
+        await photo.save();
       }
-    } catch (cleanupError) {
-      console.error('清理失败时出错:', cleanupError);
+    } catch (saveError) {
+      console.error('保存错误信息失败:', saveError);
     }
     
-    // 不抛出异常，因为这是后台处理，用户已收到响应
+    // 清理临时文件
+    try {
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        await fs.remove(tempFilePath);
+      }
+      if (thumbnailPath && fs.existsSync(thumbnailPath)) {
+        await fs.remove(thumbnailPath);
+      }
+    } catch (cleanupError) {
+      console.error('清理临时文件失败:', cleanupError);
+    }
+    
     return photo;
   }
 }

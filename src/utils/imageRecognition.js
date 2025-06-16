@@ -30,6 +30,18 @@ const createImageRecogClient = () => {
  */
 const recognizeImageTags = async (imagePath) => {
   try {
+    // 检查文件是否存在
+    if (!fs.existsSync(imagePath)) {
+      throw new Error(`图片文件不存在: ${imagePath}`);
+    }
+    
+    // 检查文件大小（阿里云限制为4MB）
+    const stats = fs.statSync(imagePath);
+    const fileSizeInMB = stats.size / (1024 * 1024);
+    if (fileSizeInMB > 4) {
+      throw new Error(`文件大小超出限制: ${fileSizeInMB.toFixed(2)}MB (最大4MB)`);
+    }
+    
     const client = createImageRecogClient();
     const fileStream = fs.createReadStream(imagePath);
     
@@ -37,37 +49,25 @@ const recognizeImageTags = async (imagePath) => {
       imageURLObject: fileStream
     });
     
-    // 增加更长的超时设置
     const runtime = new TeaUtil.RuntimeOptions({
-      readTimeout: 30000,    // 读取超时时间，30秒
-      connectTimeout: 10000, // 连接超时时间，10秒
-      retry: {               // 重试策略
-        maxRetryTimes: 3,    // 最大重试次数
-        retryPolicy: 'backoff', // 重试策略
-        backoffStrategy: 'exponential' // 指数退避策略
-      }
+      readTimeout: 45000,
+      connectTimeout: 15000
     });
     
     const response = await client.taggingImageAdvance(taggingImageAdvanceRequest, runtime);
     
+    // 确保关闭文件流
+    fileStream.destroy();
+    
     if (response && response.body && response.body.data) {
-      // 返回识别的标签数组
       return response.body.data.tags || [];
     }
     
     return [];
+    
   } catch (error) {
-    console.error('图像识别失败:', error);
-    // 增加更详细的错误日志
-    if (error.code) {
-      console.error(`错误代码: ${error.code}, 错误消息: ${error.message}`);
-    }
-    
-    if (error.stack) {
-      console.error('错误堆栈:', error.stack);
-    }
-    
-    return [];
+    console.error('图像识别失败:', error.message || error);
+    return []; // 返回空数组而不是抛出错误
   }
 };
 

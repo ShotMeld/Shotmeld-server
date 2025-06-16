@@ -8,7 +8,12 @@ const client = new OSS({
     // 从环境变量中获取访问凭证。运行本代码示例之前，请确保已设置环境变量OSS_ACCESS_KEY_ID和OSS_ACCESS_KEY_SECRET。
     accessKeyId: process.env.OSS_ACCESS_KEY_ID,
     accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET,
-    bucket: process.env.OSS_BUCKET
+    bucket: process.env.OSS_BUCKET,
+    // 增加超时配置，解决大文件上传超时问题
+    timeout: '300s',  // 5分钟超时
+    // 设置重试配置
+    retryMax: 3,
+    retryDelay: 2000
 });
 
 /**
@@ -74,10 +79,16 @@ async function listBuckets() {
 async function uploadFile(localFilePath, ossFilePath) {
     try {
         // 上传文件到OSS
-        const result = await client.put(ossFilePath, localFilePath);
+        const result = await client.put(ossFilePath, localFilePath, {
+            timeout: 300000, // 5分钟超时
+            headers: {
+                'x-oss-storage-class': 'Standard'
+            }
+        });
+        
         return result;
     } catch (err) {
-        console.error('上传文件失败:', err);
+        console.error(`上传文件失败: ${ossFilePath}`, err.message);
         throw err;
     }
 }

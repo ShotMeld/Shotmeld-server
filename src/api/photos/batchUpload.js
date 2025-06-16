@@ -18,6 +18,14 @@ async function batchUpload(req, res, next) {
       });
     }
 
+    // 检查批量上传数量限制
+    if (files.length > batchUploadConfig.limits.maxBatchSize) {
+      return res.status(400).json({
+        code: 400,
+        message: `批量上传文件数量超出限制，最大允许 ${batchUploadConfig.limits.maxBatchSize} 个文件`
+      });
+    }
+
     // 解析公共元数据
     let commonMetadata = {};
 
@@ -33,10 +41,18 @@ async function batchUpload(req, res, next) {
     // 解析位置信息
     let location = null;
     if (req.body.latitude && req.body.longitude) {
+      // 确保locationName是字符串类型
+      let locationName = req.body.locationName;
+      if (Array.isArray(locationName)) {
+        locationName = locationName.length > 0 ? locationName[0] : null;
+      } else if (locationName && typeof locationName !== 'string') {
+        locationName = String(locationName);
+      }
+      
       location = {
         latitude: parseFloat(req.body.latitude),
         longitude: parseFloat(req.body.longitude),
-        name: req.body.locationName || null
+        name: locationName || null
       };
     }
 
@@ -71,9 +87,10 @@ async function batchUpload(req, res, next) {
     };
 
     const uploadedPhotos = [];
-    const processingPromises = [];
+    const failedPhotos = [];
+    const photoDataList = []; // 保存初始处理数据
 
-    // 处理每张照片
+    // 处理每张照片（第一阶段 - 快速创建记录）
     for (const file of files) {
       // 为每张照片准备元数据
       const metadata = {
@@ -86,16 +103,13 @@ async function batchUpload(req, res, next) {
         // 第一阶段：快速处理并返回初始照片信息
         const initialPhotoData = await processUploadedPhotoInitial(file, req.user.id, metadata);
         uploadedPhotos.push(initialPhotoData.photo);
-
-        // 第二阶段：异步处理照片上传到OSS、EXIF解析和标签识别
-        const processingPromise = processUploadedPhotoFinal(initialPhotoData, req.user.id, metadata)
-          .catch(err => {
-            console.error(`照片 ${file.originalname} 后期处理失败:`, err);
-          });
-        processingPromises.push(processingPromise);
+        photoDataList.push({ initialPhotoData, metadata });
       } catch (error) {
         console.error(`处理照片 ${file.originalname} 失败:`, error);
-        // 继续处理其他照片，不中断整个上传流程
+        failedPhotos.push({
+          filename: file.originalname,
+          error: error.message
+        });
       }
     }
 
@@ -112,15 +126,31 @@ async function batchUpload(req, res, next) {
 
     // 返回上传结果
     res.status(201).json({
-      message: `成功上传 ${uploadedPhotos.length} 张照片`,
+      message: `成功接收 ${uploadedPhotos.length} 张照片，正在后台处理`,
       count: uploadedPhotos.length,
       photos: uploadedPhotos
     });
 
-    // 异步等待所有后期处理完成
-    Promise.all(processingPromises).catch(err => {
-      console.error('部分照片后期处理失败:', err);
-    });
+    // 异步串行处理所有照片的OSS上传和后期处理
+    setTimeout(async () => {
+      console.log(`开始串行处理 ${photoDataList.length} 张照片的OSS上传`);
+      
+      for (let i = 0; i < photoDataList.length; i++) {
+        const { initialPhotoData, metadata } = photoDataList[i];
+        try {
+          await processUploadedPhotoFinal(initialPhotoData, req.user.id, metadata);
+          console.log(`照片 ${initialPhotoData.photo.filename} 处理完成 (${i + 1}/${photoDataList.length})`);
+        } catch (err) {
+          console.error(`照片 ${initialPhotoData.photo.filename} 后期处理失败:`, err.message);
+          failedPhotos.push({
+            filename: initialPhotoData.photo.filename,
+            error: err.message
+          });
+        }
+      }
+      
+      console.log(`批量上传完成：成功 ${photoDataList.length - failedPhotos.length} 张，失败 ${failedPhotos.length} 张`);
+    }, 0);
 
   } catch (error) {
     next(error);
