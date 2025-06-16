@@ -16,5 +16,10 @@ module.exports = {
         dashscopeApiKey: process.env.DASHSCOPE_API_KEY,
         baseURL: process.env.AI_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
         model: process.env.AI_MODEL || "qwen-turbo-latest"
+    },
+    batchUpload: {
+        limits: {
+            maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE) || 20 // 默认最大批量上传20个文件
+        }
     }
 };

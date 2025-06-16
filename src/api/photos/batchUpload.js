@@ -1,5 +1,6 @@
 const { processUploadedPhotoInitial, processUploadedPhotoFinal } = require('./utils');
 const Tag = require('../../models/Tag');
+const config = require('../../config/config');
 
 /**
  * 批量上传照片
@@ -19,10 +20,10 @@ async function batchUpload(req, res, next) {
     }
 
     // 检查批量上传数量限制
-    if (files.length > batchUploadConfig.limits.maxBatchSize) {
+    if (files.length > config.batchUpload.limits.maxBatchSize) {
       return res.status(400).json({
         code: 400,
-        message: `批量上传文件数量超出限制，最大允许 ${batchUploadConfig.limits.maxBatchSize} 个文件`
+        message: `批量上传文件数量超出限制，最大允许 ${config.batchUpload.limits.maxBatchSize} 个文件`
       });
     }
 
